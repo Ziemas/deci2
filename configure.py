@@ -36,6 +36,7 @@ CROSS = "mips-linux-gnu-"
 
 build_targets = [
     "deci2hsyn",
+    "deci2kprt",
 ]
 
 TARGET_ELFS = [
@@ -53,14 +54,44 @@ def clean():
         os.remove(".ninja_log")
     if os.path.exists("build.ninja"):
         os.remove("build.ninja")
-    if os.path.exists("DECI2HSYN.ld"):
-        os.remove("DECI2HSYN.ld")
+
     shutil.rmtree("asm", ignore_errors=True)
     shutil.rmtree("assets", ignore_errors=True)
     shutil.rmtree("build", ignore_errors=True)
 
+def write_rules(ninja):
+    ninja.rule(
+            "as",
+            description="as $in",
+            command=f"cpp {COMMON_INCLUDES} $in -o - | {CROSS}as -no-pad-sections -EL -march=3000 -Iinclude -o $out",
+    )
 
-def build_stuff(tgt: str, linker_entries: List[LinkerEntry], append: bool = False):
+    ninja.rule(
+            "cc",
+            description="cc $in",
+            command=f"{COMPILE_CMD} $in -o $out && {CROSS}strip $out -N dummy-symbol-name",
+    )
+
+    ninja.rule(
+            "ld",
+            description="ld $out",
+            command=f"{CROSS}ld -EL -Map $mapfile -T $in -o $out $syms",
+    )
+
+    ninja.rule(
+            "sha1sum",
+            description="sha1sum $in",
+            command="sha1sum -c $in && touch $out",
+    )
+
+    ninja.rule(
+            "rom",
+            description="rom $out",
+            command=f"{CROSS}objcopy $in $out -O binary",
+    )
+
+
+def build_stuff(tgt: str, ninja, linker_entries: List[LinkerEntry]):
     built_objects: Set[Path] = set()
 
     def build(
@@ -86,42 +117,6 @@ def build_stuff(tgt: str, linker_entries: List[LinkerEntry], append: bool = Fals
                 implicit_outputs=implicit_outputs,
             )
 
-    open_mode = "a" if append else "w"    
-    ninja = ninja_syntax.Writer(open(str(ROOT / "build.ninja"), open_mode), width=9999)
-
-    # Rules
-    common_ld_args = "-EL -Map $mapfile -T $in -o $out $syms"
-
-    if not append:
-        ninja.rule(
-            "as",
-            description="as $in",
-            command=f"cpp {COMMON_INCLUDES} $in -o - | {CROSS}as -no-pad-sections -EL -march=3000 -Iinclude -o $out",
-        )
-
-        ninja.rule(
-            "cc",
-            description="cc $in",
-            command=f"{COMPILE_CMD} $in -o $out && {CROSS}strip $out -N dummy-symbol-name",
-        )
-
-        ninja.rule(
-            "ld",
-            description="ld $out",
-            command=f"{CROSS}ld {common_ld_args}",
-        )
-
-        ninja.rule(
-            "sha1sum",
-            description="sha1sum $in",
-            command="sha1sum -c $in && touch $out",
-        )
-
-        ninja.rule(
-            "rom",
-            description="rom $out",
-            command=f"{CROSS}objcopy $in $out -O binary",
-        )
 
     object_paths = set()
     for entry in linker_entries:
@@ -157,7 +152,7 @@ def build_stuff(tgt: str, linker_entries: List[LinkerEntry], append: bool = Fals
 
     elf_path = f"build/{tgt}.elf" 
     ld_path = f"{tgt}.ld"
-    map_path = f"{tgt}.map" 
+    map_path = f"build/{tgt}.map" 
     target_ld_args = f"-T config/{tgt}/undefined_syms_auto.txt -T config/{tgt}/undefined_funcs_auto.txt -T config/{tgt}/undefined_syms.txt"
 
     ninja.build(
@@ -265,9 +260,8 @@ def generate_objdiff_configuration(config: dict[str, Any]):
                 "base_path": str(base_path),
                 "scratch": {
                     "platform": "ps2",
-                    "compiler": "iop-gcc",
-                    "c_flags": "-O0 -G0",
-                    #"preset_id": 118 # Preset ID for PaRappa the Rapper 2
+                    "compiler": "iop-gcc2.8.1",
+                    "c_flags": "-O2 -G0",
                 },
                 "metadata": {"progress_categories": [category]},
             }
@@ -422,24 +416,22 @@ if __name__ == "__main__":
 
     prepare_rom_from_elfs(TARGET_ELFS)
 
+    ninja = ninja_syntax.Writer(open(str(ROOT / "build.ninja"), "w"), width=9999)
+    write_rules(ninja)
+
     for tgt in build_targets:
         yaml_file = Path(f"config/{tgt}/config.yaml")
         split.main([Path(yaml_file)], modes=["all"], verbose=False)
         linker_entries = split.linker_writer.entries
-        build_stuff(tgt, linker_entries)
+
+        build_stuff(tgt, ninja, linker_entries)
+
+        # Hack to avoid splat & spimdisasm from
+        # leaking symbols from the previous split.
+        splat.util.symbols.spim_context = spimdisasm.common.Context()
+        splat.util.symbols.reset_symbols()
 
     #hsyn_config = split.config
-
-    #
-    # Hack to avoid splat & spimdisasm from
-    # leaking symbols from the previous split.
-    #
-    splat.util.symbols.spim_context = spimdisasm.common.Context()
-    splat.util.symbols.reset_symbols()
-
-    #split.main([Path(WP2_YAML_FILE)], modes=["all"], verbose=False, use_cache=False)
-    #linker_entries = split.linker_writer.entries
-    #build_stuff(linker_entries, True)
 
     exec_shell(["ninja", "-t", "compdb"], open("compile_commands.json", "w"))
     fix_compile_commands()

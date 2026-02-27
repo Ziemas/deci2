@@ -1,0 +1,50 @@
+name: deci2kprt
+sha1: 782c212a72d539f94f645aa67fc670bb7e1f8190
+options:
+    # paths
+    basename: deci2kprt
+    target_path: in/DECI2KPRT.rom
+    base_path: ../..
+    
+    asm_path: asm/deci2kprt
+    src_path: src/deci2kprt
+    asset_path: assets/deci2kprt
+    build_path: build
+    subalign: 4
+
+    extensions_path: tools/splat_ext 
+    symbol_addrs_path: config/deci2kprt/symbol_addrs.txt
+    reloc_addrs_path: config/deci2kprt/reloc_addrs.txt
+    undefined_funcs_auto_path: config/deci2kprt/undefined_funcs_auto.txt
+    undefined_syms_auto_path:  config/deci2kprt/undefined_syms_auto.txt
+
+    migrate_rodata_to_functions: True
+    named_regs_for_c_funcs: False
+    make_full_disasm_for_code: True
+
+    # compiler 
+    compiler: GCC
+    platform: psx
+
+    string_encoding: ASCII
+    
+    section_order: [".text", ".rodata", ".data", ".bss"]
+
+segments:
+    - name: main
+      type: code
+      start: 0x0
+      vram: 0x0
+      bss_size: 0x6c
+      subsegments:
+        # .text
+        - [0x0, asm, deci2kprt]
+        - [0x2e0, asm, ilb_stub]
+        - [0x3d0, rodata, deci2kprt]
+        - [0x420, data, deci2kprt]
+
+        # .sbss / .bss
+        - { type: bss, vram: 0x430, name: deci2kprt }
+
+    - [0x430]
+        

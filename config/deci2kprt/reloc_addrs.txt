@@ -1,0 +1,5 @@
+rom:0x2e4 symbol:none reloc:MIPS_NONE
+rom:0x308 symbol:none reloc:MIPS_NONE
+rom:0x32c symbol:none reloc:MIPS_NONE
+rom:0x358 symbol:none reloc:MIPS_NONE
+rom:0x37c symbol:none reloc:MIPS_NONE

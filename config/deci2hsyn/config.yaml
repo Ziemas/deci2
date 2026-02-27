@@ -14,7 +14,7 @@ options:
 
     extensions_path: tools/splat_ext 
     symbol_addrs_path: config/deci2hsyn/symbol_addrs.txt
-    reloc_addrs_path: config/deci2syn/reloc_addrs.txt
+    reloc_addrs_path: config/deci2hsyn/reloc_addrs.txt
     undefined_funcs_auto_path: config/deci2hsyn/undefined_funcs_auto.txt
     undefined_syms_auto_path:  config/deci2hsyn/undefined_syms_auto.txt
 
