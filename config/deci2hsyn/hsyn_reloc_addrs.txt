@@ -1,0 +1,2 @@
+rom:0x74 symbol:none reloc:MIPS_NONE // loadcore_stub
+rom:0x98 symbol:none reloc:MIPS_NONE // deci2api_stub

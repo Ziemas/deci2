@@ -1,0 +1,9 @@
+start = 0x0; // type:func size:0x64
+
+QueryBootMode = 0x84; // type:func size:0x8
+sceDeci2GetStatus = 0xa8; // type:func size:0x8
+
+loadcore_stub = 0x70; // size:0x14
+deci2api_stub = 0x94; // size:0x14
+
+Module = 0xd0; // size:0x6

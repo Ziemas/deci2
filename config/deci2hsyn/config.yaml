@@ -1,0 +1,50 @@
+name: DECI2HSYN
+sha1: d9a9a8c2e7bf900abca289bda955e649a3738729  
+options:
+    # paths
+    basename: DECI2HSYN
+    target_path: in/DECI2HSYN.rom
+    base_path: ..
+    
+    asm_path: asm/deci2hsyn
+    src_path: src/deci2hsyn
+    asset_path: assets/deci2hsyn
+    build_path: build
+    subalign: 4
+
+    extensions_path: tools/splat_ext 
+    symbol_addrs_path: config/deci2syn/symbol_addrs.txt
+    reloc_addrs_path: config/deci2syn/reloc_addrs.txt
+    undefined_funcs_auto_path: config/deci2hsyn/undefined_funcs_auto.txt
+    undefined_syms_auto_path:  config/deci2hsyn/undefined_syms_auto.txt
+
+    migrate_rodata_to_functions: True
+    named_regs_for_c_funcs: False
+    make_full_disasm_for_code: True
+
+    # compiler 
+    compiler: GCC
+    platform: psx
+
+    string_encoding: ASCII
+    
+    section_order: [".text", ".rodata", ".data", ".bss"]
+
+segments:
+    - name: main
+      type: code
+      start: 0x0
+      vram: 0x0
+      bss_size: 0x50
+      subsegments:
+        # .text
+        - [0x0, c, deci2hsyn]
+        - [0x70, asm, ilb_stub]
+        - [0xc0, .rodata, deci2hsyn]
+        - [0xd0, .data, deci2hsyn]
+
+        # .sbss / .bss
+        - { type: bss, vram: 0xe0, name: deci2hsyn }
+
+    - [0xe0]
+        
