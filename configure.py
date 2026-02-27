@@ -90,8 +90,7 @@ def build_stuff(tgt: str, linker_entries: List[LinkerEntry], append: bool = Fals
     ninja = ninja_syntax.Writer(open(str(ROOT / "build.ninja"), open_mode), width=9999)
 
     # Rules
-    common_ld_args = "-EL -Map $mapfile -T $in -o $out"
-    hsyn_ld_args = f"{common_ld_args} -T config/hsyn_undefined_syms_auto.txt -T config/hsyn_undefined_funcs_auto.txt -T config/hsyn_undefined_syms.txt"
+    common_ld_args = "-EL -Map $mapfile -T $in -o $out $syms"
 
     if not append:
         ninja.rule(
@@ -109,7 +108,7 @@ def build_stuff(tgt: str, linker_entries: List[LinkerEntry], append: bool = Fals
         ninja.rule(
             "ld",
             description="ld $out",
-            command=f"{CROSS}ld",
+            command=f"{CROSS}ld {common_ld_args}",
         )
 
         ninja.rule(
@@ -159,15 +158,14 @@ def build_stuff(tgt: str, linker_entries: List[LinkerEntry], append: bool = Fals
     elf_path = f"build/{tgt}.elf" 
     ld_path = f"{tgt}.ld"
     map_path = f"{tgt}.map" 
-
-    ld_rule = "ld"
+    target_ld_args = f"-T config/{tgt}/undefined_syms_auto.txt -T config/{tgt}/undefined_funcs_auto.txt -T config/{tgt}/undefined_syms.txt"
 
     ninja.build(
         elf_path,
-        ld_rule,
+        "ld",
         ld_path,
         implicit=[str(obj) for obj in built_objects],
-        variables={"mapfile": map_path},
+        variables={"mapfile": map_path, "syms": target_ld_args},
     )
 
     rom_path = f"build/{tgt}.rom"
