@@ -27,7 +27,7 @@ ROOT = Path(__file__).parent
 TOOLS_DIR = ROOT / "tools"
 
 COMPILER_DIR = f"{TOOLS_DIR}/toolchain/iop-gcc281/bin"
-COMMON_INCLUDES = "-Iinclude -Iinclude/common"
+COMMON_INCLUDES = "-Iinclude -Iinclude/common -Iinclude/sdk"
 
 COMPILER_FLAGS = f"-B {TOOLS_DIR}/toolchain/iop-gcc281/lib/gcc-lib/mipsel-scei-elfl/2.8.1/  -O2 -G0 -g -Wa,-Iinclude"
 COMPILE_CMD = f"{COMPILER_DIR}/iop-gcc -c {COMMON_INCLUDES} {COMPILER_FLAGS}"
@@ -54,6 +54,10 @@ def clean():
         os.remove(".ninja_log")
     if os.path.exists("build.ninja"):
         os.remove("build.ninja")
+
+    for tgt in build_targets:
+        if os.path.exists(f"{tgt}.ld") :
+            os.remove(f"{tgt}.ld")
 
     shutil.rmtree("asm", ignore_errors=True)
     shutil.rmtree("assets", ignore_errors=True)

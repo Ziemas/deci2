@@ -1,1 +1,20 @@
 start = 0x0; // type:func
+kp_putc = 0xa8; // type:func
+kp_cb = 0x144; // type:func
+kp_print = 0x180; // type:func
+kp_flush= 0x1b8; // type:func
+kp_handler = 0x224; // type:func
+
+kp = 0x430; // size:0x6c
+
+memset = 0x33c; // type:func
+QueryBootMode = 0x318; // type:func
+prnt = 0x344; // type:func
+CpuInvokeInKmode = 0x368; // type:func
+sceDeci2Open = 0x38c; // type:func
+sceDeci2ExRecv = 0x394; // type:func
+sceDeci2ExSend = 0x39c; // type:func
+sceDeci2ReqSend = 0x3a4; // type:func
+sceDeci2ExPanic = 0x3ac; // type:func
+sceDeci2Poll = 0x3b4; // type:func
+KprintfSet = 0x2f4; // type:func

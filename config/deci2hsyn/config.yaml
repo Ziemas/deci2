@@ -44,7 +44,7 @@ segments:
         - [0xd0, .data, deci2hsyn]
 
         # .sbss / .bss
-        - { type: bss, vram: 0xe0, name: deci2hsyn }
+        - { type: .bss, vram: 0xe0, name: deci2hsyn }
 
     - [0xe0]
         

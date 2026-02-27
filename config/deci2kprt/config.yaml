@@ -37,14 +37,12 @@ segments:
       vram: 0x0
       bss_size: 0x6c
       subsegments:
-        # .text
         - [0x0, c, deci2kprt]
         - [0x2e0, asm, ilb_stub]
         - [0x3d0, .rodata, deci2kprt]
-        - [0x420, data, deci2kprt]
+        - [0x420, .data, deci2kprt]
 
-        # .sbss / .bss
-        - { type: bss, vram: 0x430, name: deci2kprt }
+        - { type: .bss, vram: 0x430, name: deci2kprt }
 
     - [0x430]
         
