@@ -38,9 +38,9 @@ segments:
       bss_size: 0x6c
       subsegments:
         # .text
-        - [0x0, asm, deci2kprt]
+        - [0x0, c, deci2kprt]
         - [0x2e0, asm, ilb_stub]
-        - [0x3d0, rodata, deci2kprt]
+        - [0x3d0, .rodata, deci2kprt]
         - [0x420, data, deci2kprt]
 
         # .sbss / .bss

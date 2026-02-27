@@ -180,7 +180,7 @@ def build_stuff(tgt: str, ninja, linker_entries: List[LinkerEntry]):
         implicit=[rom_path],
     )
 
-def generate_objdiff_configuration(config: dict[str, Any]):
+def build_objdiff_units(tgt: str, config: dict[str, Any]) -> list[dict[str, Any]]:
     """
     Generate `objdiff.json` configuration from splat YAML config.
 
@@ -218,15 +218,6 @@ def generate_objdiff_configuration(config: dict[str, Any]):
                 raise RuntimeError("invalid subsegment type")
 
             if subs_type in ("asm", "c", "cpp"):
-                if subs_name.startswith("sdk/") or subs_name.startswith("nalib/"):
-                    #
-                    # Skip SDK as it's not part of the game files
-                    #
-                    # nalib can't be precisely measured because
-                    # it's mostly made of inlines, so skip it.
-                    #
-                    continue
-
                 tu_to_diff.append((subs_type, subs_name))
 
     units: list[dict[str, Any]] = []
@@ -236,7 +227,7 @@ def generate_objdiff_configuration(config: dict[str, Any]):
     for tu_type, tu_name in tu_to_diff:
         tu_obj_suffix = f".{tu_type}.o" # .c.o or .cpp.o
 
-        target_path = Path("obj", tu_name).with_suffix(tu_obj_suffix)
+        target_path = Path("obj", tgt, tu_name).with_suffix(tu_obj_suffix)
 
         # since we only compile fully decompiled TUs, the
         # "c" type implies that the TU is complete
@@ -246,7 +237,7 @@ def generate_objdiff_configuration(config: dict[str, Any]):
 
         if is_decompiled:
             # compose the build path as "build/src/path/of/tu.{c,cpp}.o"
-            base_path = Path("build", "src", tu_name).with_suffix(tu_obj_suffix)
+            base_path = Path("build", "src", tgt, tu_name).with_suffix(tu_obj_suffix)
             decomp_tu_count += 1
         else:
             # use dummy object for incomplete (not yet decompiled) TUs:
@@ -255,7 +246,7 @@ def generate_objdiff_configuration(config: dict[str, Any]):
 
         units.append(
             {
-                "name": tu_name,
+                "name": f"{tgt}/{tu_name}",
                 "target_path": str(target_path),
                 "base_path": str(base_path),
                 "scratch": {
@@ -267,6 +258,9 @@ def generate_objdiff_configuration(config: dict[str, Any]):
             }
         )
 
+    return units
+
+def write_objdiff_configuration(units: list[dict[str, Any]]):
     objdiff_json: dict[str, Any] = {
         "$schema": "https://raw.githubusercontent.com/encounter/objdiff/main/config.schema.json",
         "custom_make": "ninja",
@@ -287,7 +281,7 @@ def generate_objdiff_configuration(config: dict[str, Any]):
         json.dump(objdiff_json, fw, indent=2)
 
     print(
-        f"Wrote objdiff configuration ({len(units)} units) to {objdiff_path} ({decomp_tu_count} decompiled)"
+        f"Wrote objdiff configuration ({len(units)} units) to {objdiff_path}"
     )
 
 def build_objdiff_objects():
@@ -309,7 +303,7 @@ def build_objdiff_objects():
         if base_path == dummy_path:
             continue
 
-        asm_path = Path("asm/hsyn", *target_path.parts[1:]).with_suffix("").with_suffix(".s")
+        asm_path = Path("asm", *target_path.parts[1:]).with_suffix("").with_suffix(".s")
         print(target_path)
         print(asm_path)
 
@@ -343,9 +337,6 @@ def fix_compile_commands():
     with open("compile_commands.json", "r") as f:
         data = json.load(f)
     
-    fix_eucjp_entry = False
-    eucjp_og_file = Path("")
-
     for entry in data[:]:
         file_path = Path(entry["file"])
         #
@@ -419,6 +410,8 @@ if __name__ == "__main__":
     ninja = ninja_syntax.Writer(open(str(ROOT / "build.ninja"), "w"), width=9999)
     write_rules(ninja)
 
+    units: list[dict[str, Any]] = []
+
     for tgt in build_targets:
         yaml_file = Path(f"config/{tgt}/config.yaml")
         split.main([Path(yaml_file)], modes=["all"], verbose=False)
@@ -426,16 +419,17 @@ if __name__ == "__main__":
 
         build_stuff(tgt, ninja, linker_entries)
 
+        units.extend(build_objdiff_units(tgt, split.config))
+
         # Hack to avoid splat & spimdisasm from
         # leaking symbols from the previous split.
         splat.util.symbols.spim_context = spimdisasm.common.Context()
         splat.util.symbols.reset_symbols()
 
-    #hsyn_config = split.config
-
+    ninja.close()
     exec_shell(["ninja", "-t", "compdb"], open("compile_commands.json", "w"))
     fix_compile_commands()
 
-    #if args.objdiff:
-    #    generate_objdiff_configuration(hsyn_config)
-    #    build_objdiff_objects()
+    if args.objdiff:
+        write_objdiff_configuration(units)
+        build_objdiff_objects()
