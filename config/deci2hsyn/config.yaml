@@ -1,10 +1,10 @@
-name: DECI2HSYN
+name: deci2hsyn
 sha1: d9a9a8c2e7bf900abca289bda955e649a3738729  
 options:
     # paths
-    basename: DECI2HSYN
+    basename: deci2hsyn
     target_path: in/DECI2HSYN.rom
-    base_path: ..
+    base_path: ../..
     
     asm_path: asm/deci2hsyn
     src_path: src/deci2hsyn

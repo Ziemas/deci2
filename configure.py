@@ -26,13 +26,6 @@ from splat.segtypes.linker_entry import LinkerEntry
 ROOT = Path(__file__).parent
 TOOLS_DIR = ROOT / "tools"
 
-#HSYN_YAML_FILE = "config/deci2hsyn/config.yaml"
-#HSYN_BASENAME = "DECI2HSYN"
-#HSYN_LD_PATH = f"{HSYN_BASENAME}.ld"
-#HSYN_ROM_PATH = f"build/{HSYN_BASENAME}.rom"
-#HSYN_MAP_PATH = f"build/{HSYN_BASENAME}.map"
-#HSYN_ELF_PATH = f"build/{HSYN_BASENAME}.elf"
-
 COMPILER_DIR = f"{TOOLS_DIR}/toolchain/iop-gcc281/bin"
 COMMON_INCLUDES = "-Iinclude -Iinclude/common"
 
@@ -41,12 +34,12 @@ COMPILE_CMD = f"{COMPILER_DIR}/iop-gcc -c {COMMON_INCLUDES} {COMPILER_FLAGS}"
 
 CROSS = "mips-linux-gnu-"
 
-TARGET_CFGS = [
+build_targets = [
     "deci2hsyn",
 ]
 
 TARGET_ELFS = [
-    Path(f"in/{HSYN_BASENAME}"),
+    Path(f"in/{target.upper()}") for target in build_targets 
 ]
 
 def exec_shell(command: List[str], stdout=subprocess.PIPE) -> str:
@@ -67,7 +60,7 @@ def clean():
     shutil.rmtree("build", ignore_errors=True)
 
 
-def build_stuff(linker_entries: List[LinkerEntry], append: bool = False):
+def build_stuff(tgt: str, linker_entries: List[LinkerEntry], append: bool = False):
     built_objects: Set[Path] = set()
 
     def build(
@@ -116,7 +109,7 @@ def build_stuff(linker_entries: List[LinkerEntry], append: bool = False):
         ninja.rule(
             "ld",
             description="ld $out",
-            command=f"{CROSS}ld {hsyn_ld_args}",
+            command=f"{CROSS}ld",
         )
 
         ninja.rule(
@@ -163,9 +156,9 @@ def build_stuff(linker_entries: List[LinkerEntry], append: bool = False):
             print(f"ERROR: Unsupported build segment type {seg.type}")
             sys.exit(1)
 
-    elf_path = HSYN_ELF_PATH
-    ld_path = HSYN_LD_PATH
-    map_path = HSYN_MAP_PATH
+    elf_path = f"build/{tgt}.elf" 
+    ld_path = f"{tgt}.ld"
+    map_path = f"{tgt}.map" 
 
     ld_rule = "ld"
 
@@ -177,7 +170,7 @@ def build_stuff(linker_entries: List[LinkerEntry], append: bool = False):
         variables={"mapfile": map_path},
     )
 
-    rom_path = HSYN_ROM_PATH
+    rom_path = f"build/{tgt}.rom"
 
     ninja.build(
         rom_path,
@@ -185,7 +178,7 @@ def build_stuff(linker_entries: List[LinkerEntry], append: bool = False):
         elf_path,
     )
 
-    checksum_path = "config/hsyn_checksum.sha1"
+    checksum_path = f"config/{tgt}/checksum.sha1"
 
     ninja.build(
         rom_path + ".ok",
@@ -431,11 +424,11 @@ if __name__ == "__main__":
 
     prepare_rom_from_elfs(TARGET_ELFS)
 
-    for cfg in TARGET_CFGS:
-        yaml_file = Path(f"config/{cfg}/config.yaml")
+    for tgt in build_targets:
+        yaml_file = Path(f"config/{tgt}/config.yaml")
         split.main([Path(yaml_file)], modes=["all"], verbose=False)
         linker_entries = split.linker_writer.entries
-        build_stuff(linker_entries)
+        build_stuff(tgt, linker_entries)
 
     #hsyn_config = split.config
 
