@@ -1,0 +1,7 @@
+start = 0x0; // type:func
+
+sceDeci2Poll = 0x28d0; // type:func
+printf = 0x59bc; // type:func
+CpuEnableIntr = 0x59e8; // type:func
+ChangeThreadPriority = 0x5a24; // type:func
+DelayThread = 0x5a34; // type:func

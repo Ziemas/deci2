@@ -1,0 +1,54 @@
+name: deci2
+sha1: 4134254506444ed4ec49447a1509abce1c5b2f57
+options:
+    # paths
+    basename: deci2
+    target_path: in/DECI2.rom
+    base_path: ../..
+    
+    asm_path: asm/deci2
+    src_path: src/deci2
+    asset_path: assets/deci2
+    build_path: build
+    subalign: 4
+
+    extensions_path: tools/splat_ext 
+    symbol_addrs_path: config/deci2/symbol_addrs.txt
+    reloc_addrs_path: config/deci2/reloc_addrs.txt
+    undefined_funcs_auto_path: config/deci2/undefined_funcs_auto.txt
+    undefined_syms_auto_path:  config/deci2/undefined_syms_auto.txt
+
+    migrate_rodata_to_functions: True
+    named_regs_for_c_funcs: False
+    make_full_disasm_for_code: True
+
+    # compiler 
+    compiler: GCC
+    platform: psx
+
+    string_encoding: ASCII
+    
+    section_order: [".text", ".rodata", ".data", ".bss", ".sbss"]
+
+segments:
+    - name: main
+      type: code
+      start: 0x0
+      vram: 0x0
+      bss_size: 0x50
+      subsegments:
+        # .text
+        - [0x0, c, main]
+        - [0x3680, asm, export_stub]
+        - [0x3760, asm]
+        - [0x4f9c, asm, exc]
+        - [0x58e0, asm, ilb_stub]
+        - [0x5aa0, .rodata, main]
+        - [0x6560, data, main]
+
+        # .sbss / .bss
+        - { type: sbss, vram: 0x66f0, name: deci2 }
+        - { type: bss, vram: 0x6700, name: deci2 }
+
+    - [0x66f0]
+        

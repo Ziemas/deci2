@@ -46,27 +46,3 @@ INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000D98);
 INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000E04);
 
 INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000E0C);
-
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000F50);
-
-// Poll?
-//int
-//func_00000F50()
-//{
-//	unsigned int stat, dicr;
-//	int res;
-//
-//	stat = *(volatile unsigned int *)IRQ_STAT;
-//	res = stat & 2;
-//
-//	if (res) {
-//		res = stat & 8;
-//	}
-//
-//	if (res) {
-//		dicr = *(volatile unsigned int *)DMA_DICR;
-//		res = dicr & 0x4000000;
-//	}
-//
-//	return res;
-//}
