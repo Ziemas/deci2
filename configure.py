@@ -35,6 +35,7 @@ COMPILE_CMD = f"{COMPILER_DIR}/iop-gcc -c {COMMON_INCLUDES} {COMPILER_FLAGS}"
 CROSS = "mips-linux-gnu-"
 
 build_targets = [
+    "deci2drs",
     "deci2hsyn",
     "deci2kprt",
 ]

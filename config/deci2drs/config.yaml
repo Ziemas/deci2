@@ -1,0 +1,48 @@
+name: deci2drs
+sha1: 1d8ccfd99dc232fe3b2f3d9811e141c187d80dc5
+options:
+    # paths
+    basename: deci2drs
+    target_path: in/DECI2DRS.rom
+    base_path: ../..
+    
+    asm_path: asm/deci2drs
+    src_path: src/deci2drs
+    asset_path: assets/deci2drs
+    build_path: build
+    subalign: 4
+
+    extensions_path: tools/splat_ext 
+    symbol_addrs_path: config/deci2drs/symbol_addrs.txt
+    reloc_addrs_path: config/deci2drs/reloc_addrs.txt
+    undefined_funcs_auto_path: config/deci2drs/undefined_funcs_auto.txt
+    undefined_syms_auto_path:  config/deci2drs/undefined_syms_auto.txt
+
+    migrate_rodata_to_functions: True
+    named_regs_for_c_funcs: False
+    make_full_disasm_for_code: True
+
+    # compiler 
+    compiler: GCC
+    platform: psx
+
+    string_encoding: ASCII
+    
+    section_order: [".text", ".rodata", ".data", ".bss"]
+
+segments:
+    - name: main
+      type: code
+      start: 0x0
+      vram: 0x0
+      bss_size: 0x34
+      subsegments:
+        - [0x0, c, deci2drs]
+        - [0xfa0, asm, ilb_stub]
+        - [0x10b0, .rodata, deci2drs]
+        - [0x13f0, data, deci2drs]
+
+        - { type: .bss, vram: 0x1460, name: deci2drs }
+
+    - [0x1460]
+        
