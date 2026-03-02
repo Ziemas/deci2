@@ -38,10 +38,10 @@ segments:
       bss_size: 0x34
       subsegments:
         - [0x0, c, deci2drs]
-        - [0xf50, hasm, poll]
+        - [0xf50, asm, poll]
         - [0xfa0, asm, ilb_stub]
         - [0x10b0, .rodata, deci2drs]
-        - [0x13f0, data, deci2drs]
+        - [0x13f0, .data, deci2drs]
 
         - { type: .bss, vram: 0x1460, name: deci2drs }
 

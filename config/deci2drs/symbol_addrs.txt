@@ -1,1 +1,4 @@
 start = 0x0; // type:func
+
+drs_iface_func = 0x000013F8; // size:0x34
+drs_iface_func_name = 0x0000142c;
