@@ -2,21 +2,7 @@
 
 #include <loadcore.h>
 
-extern char D_000010B0[];
-ModuleInfo Module = { D_000010B0, 0x103 };
-
-extern char D_00001138[];
-extern char D_0000112C[];
-extern char D_00001124[];
-extern char D_00001118[];
-extern char D_0000110C[];
-extern char D_00001100[];
-extern char D_000010F8[];
-extern char D_000010F0[];
-extern char D_000010E8[];
-extern char D_000010DC[];
-extern char D_000010D4[];
-extern char D_000010CC[];
+ModuleInfo Module = { "Deci2_SIF2_interface_driver", 0x103 };
 
 int func_0000068C();
 int func_000006CC();
@@ -50,18 +36,18 @@ void *drs_iface_func[] = {
 };
 
 const char *drs_iface_func_name[] = {
-	D_00001138,
-	D_0000112C,
-	D_00001124,
-	D_00001118,
-	D_0000110C,
-	D_00001100,
-	D_000010F8,
-	D_000010F0,
-	D_000010E8,
-	D_000010DC,
-	D_000010D4,
-	D_000010CC,
+	"RCV_START",
+	"RCV_READ",
+	"RCV_END",
+	"SEND_START",
+	"SEND_WRITE",
+	"SEND_END",
+	"POLL",
+	"RCV_OFF",
+	"RCV_ON",
+	"SEND_OFF",
+	"SEND_ON",
+	"DEBUG",
 };
 
 struct drv_sif {
@@ -81,8 +67,6 @@ struct drv_sif {
 };
 
 INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", start);
-
-INCLUDE_RODATA("asm/deci2drs/nonmatchings/deci2drs", D_000010B0);
 
 INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_000000DC);
 
