@@ -1,6 +1,18 @@
 #include "common.h"
+#include "deci2.h"
+#include "deci2_internal.h"
+#include "intrman_internal.h"
+#include "loadcore_internal.h"
+#include "sif.h"
+#include "sys/types.h"
 
 #include <loadcore.h>
+#include <string.h>
+
+#define IRQ_CTRL 0xbf801450
+#define read32(a) (*(volatile u_int *)(a))
+
+extern int D_A00003E0;
 
 ModuleInfo Module = { "Deci2_SIF2_interface_driver", 0x103 };
 
@@ -18,7 +30,7 @@ int func_00000D98();
 int func_00000E04();
 int func_00000E0C();
 
-void *drs_iface_func[] = {
+int (*drs_iface_func[])() = {
 	func_0000068C,
 	func_000006CC,
 	func_0000079C,
@@ -51,7 +63,7 @@ const char *drs_iface_func_name[] = {
 };
 
 struct drv_sif {
-	int iface;
+	struct deci2_iface *iface;
 	int flag;
 	int field_8;
 	int field_c;
@@ -66,11 +78,118 @@ struct drv_sif {
 	int field_30;
 };
 
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", start);
+struct drv_sif sifdrv;
 
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_000000DC);
+int func_000000DC(int func, struct drv_sif *drv, int a2, int a3);
+int func_00000F50();
 
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000184);
+int
+start(int a0)
+{
+	int *bootmode;
+	int prid;
+
+	asm volatile("mfc0 %0, $15" : "=r"(prid) :);
+	if (prid < 16) {
+		return 1;
+	}
+
+	if ((read32(IRQ_CTRL) & 8)) {
+		return 1;
+	}
+
+	if (!a0) {
+		bootmode = QueryBootMode(3);
+		if (bootmode && (bootmode[1] & 0x40)) {
+			return 1;
+		}
+	}
+
+	memset(&sifdrv, 0, sizeof(sifdrv));
+	sifdrv.flag |= 0x100000;
+	sifdrv.iface = sceDeci2IfCreate(DECI2_NODE_EE, &sifdrv, func_000000DC, func_00000F50);
+	DisableDispatchIntr(1);
+	DisableDispatchIntr(34);
+	EnableIntr(1);
+	return 0;
+}
+
+int
+func_000000DC(int func, struct drv_sif *drv, int a2, int a3)
+{
+	if ((drv->field_8 & 0x800) && func != 6) {
+		sceDeci2ExPanic("\t\tsif2 func %s flag = %x\n", drs_iface_func_name[func], sifdrv.flag);
+	}
+
+	drs_iface_func[func](drv, a2, a3);
+}
+
+// INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000184);
+void
+func_00000184(struct drv_sif *drv)
+{
+	u_int msflag;
+	int spec, unk1, unk2;
+
+	msflag = sceSifGetMSflg();
+	if ((drv->field_8 & 0x800) && (msflag & 0xc0000000)) {
+		sceDeci2ExPanic("\t\tsif2 read msflag for rcv %x\n", msflag);
+	}
+
+	if (!(drv->flag & 0x202)) {
+		if (msflag & 0x80000000) {
+			spec = D_A00003E0;
+            /*
+             * First write of transfer?
+             * int words : 8
+             * int dest  : 7
+             * int start : 1
+             * int proto : 16
+             *
+             * Further writes
+             * int words : 15
+             * int start : 1
+             * int proto : 16
+             */
+
+			if ((drv->field_8 & 0x800)) {
+				sceDeci2ExPanic("\t\tsif2 read spec %x and DECI2_ACCEPT\n", D_A00003E0);
+			}
+
+			drv->field_c = spec >> 16;
+			if (spec & 0x8000) {
+				unk1 = spec & 0x7fff;
+				unk2 = 4 * unk1;
+				if (!unk1) {
+					unk2 = 0x20000;
+				}
+
+				drv->field_14 = unk2;
+			} else {
+				unk1 = spec & 0x7fff;
+
+				drv->field_10 = (spec >> 8) & 0x7f;
+				unk2 = 4 * unk1;
+				if (!(spec & 0xff)) {
+					unk2 = 0x400;
+				}
+
+				drv->field_14 = unk2;
+			}
+
+			drv->field_18 = 0;
+			drv->flag = (drv->flag | 0x2200) & ~0x8000;
+			sceSifSetMSflg(0x80000000);
+			sceSifSetSMflg(0x40000000);
+			sceSifIntrOther();
+			return;
+		}
+	}
+
+	if (msflag & 0x80000000) {
+		drv->flag |= 0x8000;
+	}
+}
 
 INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_000002B4);
 
@@ -104,6 +223,10 @@ INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000D58);
 
 INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000D98);
 
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000E04);
+int
+func_00000E04(struct drv_sif *drv, int a2, int a3)
+{
+	drv->field_8 = a2;
+}
 
 INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000E0C);
