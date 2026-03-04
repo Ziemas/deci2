@@ -6,6 +6,7 @@ QueryBootMode = 0xfb4; // type:func
 memset = 0xfd8; // type:func
 EnableIntr = 0xffc; // type:func
 DisableDispatchIntr = 0x1004; // type:func
+sceSifDma2Transfer = 0x1030; // type:func
 sceSifGetMSflg = 0x1038; // type:func
 sceSifSetMSflg = 0x1040; // type:func
 sceSifGetSMflg = 0x1048; // type:func

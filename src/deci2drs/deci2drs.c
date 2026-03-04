@@ -4,6 +4,7 @@
 #include "intrman_internal.h"
 #include "loadcore_internal.h"
 #include "sif.h"
+#include "sif_internal.h"
 #include "sys/types.h"
 
 #include <loadcore.h>
@@ -136,55 +137,53 @@ func_00000184(struct drv_sif *drv)
 		sceDeci2ExPanic("\t\tsif2 read msflag for rcv %x\n", msflag);
 	}
 
-	if (!(drv->flag & 0x202)) {
-		if (msflag & 0x80000000) {
-			spec = D_A00003E0;
-			/*
-			 * First write of transfer?
-			 * int words : 8
-			 * int dest  : 7
-			 * int unk   : 1
-			 * int proto : 16
-			 *
-			 * Further writes
-			 * int words : 15
-			 * int unk   : 1
-			 * int proto : 16
-			 */
+	if (!(drv->flag & 0x202) && (msflag & 0x80000000)) {
+		spec = D_A00003E0;
+		/*
+		 * First write of transfer?
+		 * int words : 8
+		 * int dest  : 7
+		 * int unk   : 1
+		 * int proto : 16
+		 *
+		 * Further writes
+		 * int words : 15
+		 * int unk   : 1
+		 * int proto : 16
+		 */
 
-			if ((drv->field_8 & 0x800)) {
-				sceDeci2ExPanic("\t\tsif2 read spec %x and DECI2_ACCEPT\n", D_A00003E0);
-			}
-
-			drv->field_c = spec >> 16;
-			if (spec & 0x8000) {
-				size = (spec & 0x7fff);
-				if (size) {
-					size *= 4;
-				} else {
-					size = 0x20000;
-				}
-
-				drv->field_14 = size;
-			} else {
-				drv->field_10 = (spec >> 8) & 0x7f;
-				size = (spec & 0xff);
-				if (size) {
-					size *= 4;
-				} else {
-					size = 0x400;
-				}
-
-				drv->field_14 = size;
-			}
-
-			drv->field_18 = 0;
-			drv->flag = (drv->flag | 0x2200) & ~0x8000;
-			sceSifSetMSflg(0x80000000);
-			sceSifSetSMflg(0x40000000);
-			sceSifIntrOther();
-			return;
+		if ((drv->field_8 & 0x800)) {
+			sceDeci2ExPanic("\t\tsif2 read spec %x and DECI2_ACCEPT\n", D_A00003E0);
 		}
+
+		drv->field_c = spec >> 16;
+		if (spec & 0x8000) {
+			size = (spec & 0x7fff);
+			if (size) {
+				size *= 4;
+			} else {
+				size = 0x20000;
+			}
+
+			drv->field_14 = size;
+		} else {
+			drv->field_10 = (spec >> 8) & 0x7f;
+			size = (spec & 0xff);
+			if (size) {
+				size *= 4;
+			} else {
+				size = 0x400;
+			}
+
+			drv->field_14 = size;
+		}
+
+		drv->field_18 = 0;
+		drv->flag = (drv->flag | 0x2200) & ~0x8000;
+		sceSifSetMSflg(0x80000000);
+		sceSifSetSMflg(0x40000000);
+		sceSifIntrOther();
+		return;
 	}
 
 	if (msflag & 0x80000000) {
@@ -192,9 +191,40 @@ func_00000184(struct drv_sif *drv)
 	}
 }
 
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_000002B4);
+void
+func_000002B4(struct drv_sif *drv)
+{
+	u_int msflag;
 
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000384);
+	msflag = sceSifGetMSflg();
+	if ((drv->field_8 & 0x800) && (msflag & 0xc0000000)) {
+		sceDeci2ExPanic("\t\tsif2 read msflag for send %x\n", msflag);
+	}
+
+	if (!(drv->flag & 0x202) && (msflag & 0x40000000)) {
+		drv->flag |= 2;
+		sceSifSetMSflg(0x40000000);
+		if ((drv->field_8 & 0x800)) {
+			sceDeci2ExPanic("\t\tsif2 send dma start addr=%x, size=%x\n", drv->field_30,
+			  drv->field_2c);
+		}
+		EnableIntr(34);
+		sceSifDma2Transfer((void *)drv->field_30, drv->field_2c, 1);
+	}
+}
+
+void
+func_00000384(struct drv_sif *drv)
+{
+	int msflag;
+
+	if (drv->field_8 & 0xc00) {
+		msflag = sceSifGetMSflg();
+		if (drv->flag & 2 && msflag & 0x40000000) {
+			sceDeci2ExPanic("\t\tSIF2 SENDING unexpected DECI2_ACCEPT !\n");
+		}
+	}
+}
 
 INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_000003F4);
 
