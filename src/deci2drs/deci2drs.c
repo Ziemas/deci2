@@ -66,9 +66,9 @@ struct drv_sif {
 	struct deci2_iface *iface;
 	int flag;
 	int field_8;
-	int field_c;
+	int field_c; // current protocol
 	int field_10;
-	int field_14;
+	int field_14; // current transfer size
 	int field_18;
 	int field_1c;
 	int field_20;
@@ -129,7 +129,7 @@ void
 func_00000184(struct drv_sif *drv)
 {
 	u_int msflag;
-	int spec, unk1, unk2;
+	int spec, size;
 
 	msflag = sceSifGetMSflg();
 	if ((drv->field_8 & 0x800) && (msflag & 0xc0000000)) {
@@ -139,18 +139,18 @@ func_00000184(struct drv_sif *drv)
 	if (!(drv->flag & 0x202)) {
 		if (msflag & 0x80000000) {
 			spec = D_A00003E0;
-            /*
-             * First write of transfer?
-             * int words : 8
-             * int dest  : 7
-             * int start : 1
-             * int proto : 16
-             *
-             * Further writes
-             * int words : 15
-             * int start : 1
-             * int proto : 16
-             */
+			/*
+			 * First write of transfer?
+			 * int words : 8
+			 * int dest  : 7
+			 * int unk   : 1
+			 * int proto : 16
+			 *
+			 * Further writes
+			 * int words : 15
+			 * int unk   : 1
+			 * int proto : 16
+			 */
 
 			if ((drv->field_8 & 0x800)) {
 				sceDeci2ExPanic("\t\tsif2 read spec %x and DECI2_ACCEPT\n", D_A00003E0);
@@ -158,23 +158,24 @@ func_00000184(struct drv_sif *drv)
 
 			drv->field_c = spec >> 16;
 			if (spec & 0x8000) {
-				unk1 = spec & 0x7fff;
-				unk2 = 4 * unk1;
-				if (!unk1) {
-					unk2 = 0x20000;
+				size = (spec & 0x7fff);
+				if (size) {
+					size *= 4;
+				} else {
+					size = 0x20000;
 				}
 
-				drv->field_14 = unk2;
+				drv->field_14 = size;
 			} else {
-				unk1 = spec & 0x7fff;
-
 				drv->field_10 = (spec >> 8) & 0x7f;
-				unk2 = 4 * unk1;
-				if (!(spec & 0xff)) {
-					unk2 = 0x400;
+				size = (spec & 0xff);
+				if (size) {
+					size *= 4;
+				} else {
+					size = 0x400;
 				}
 
-				drv->field_14 = unk2;
+				drv->field_14 = size;
 			}
 
 			drv->field_18 = 0;
