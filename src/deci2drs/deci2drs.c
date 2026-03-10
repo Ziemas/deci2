@@ -11,7 +11,9 @@
 #include <string.h>
 
 #define I_STAT 0xbf801070
+#define DMA_DICR 0xbf8010f4
 #define IRQ_CTRL 0xbf801450
+
 #define read32(a) (*(volatile u_int *)(a))
 #define write32(a, b) (*(volatile u_int *)(a) = (b))
 
@@ -20,21 +22,43 @@ extern int D_A00003E4;
 
 ModuleInfo Module = { "Deci2_SIF2_interface_driver", 0x103 };
 
-int func_0000068C();
-int func_000006CC();
-int func_0000079C();
-int func_000007E0();
-int func_00000828();
-int func_00000940();
-int func_00000B80();
-int func_00000CAC();
-int func_00000CEC();
-int func_00000D58();
-int func_00000D98();
-int func_00000E04();
-void func_00000E0C();
+struct drv_sif {
+	struct deci2_iface *iface;
+	int flag;
+	int field_8;
+	int field_c; // current protocol
+	int field_10;
+	int field_14; // current transfer size
+	int field_18;
+	int field_1c;
+	void *field_20;
+	int field_24;
+	int field_28;
+	int field_2c;
+	int field_30;
+};
 
-int (*drs_iface_func[])() = {
+struct drv_sif sifdrv;
+
+int func_0000068C(struct drv_sif *drv, int arg1, int arg2);
+int func_000006CC(struct drv_sif *drv, int arg1, int arg2);
+int func_0000079C(struct drv_sif *drv, int arg1, int arg2);
+int func_000007E0(struct drv_sif *drv, int arg1, int arg2);
+int func_00000828(struct drv_sif *drv, int arg1, int arg2);
+int func_00000940(struct drv_sif *drv, int arg1, int arg2);
+int func_00000B80(struct drv_sif *drv, int arg1, int arg2);
+int func_00000CAC(struct drv_sif *drv, int arg1, int arg2);
+int func_00000CEC(struct drv_sif *drv, int arg1, int arg2);
+int func_00000D58(struct drv_sif *drv, int arg1, int arg2);
+int func_00000D98(struct drv_sif *drv, int arg1, int arg2);
+int func_00000E04(struct drv_sif *drv, int arg1, int arg2);
+int func_00000984(struct drv_sif *drv, int arg1, int arg2);
+int func_00000E0C(struct drv_sif *drv, int arg1, int arg2);
+
+int func_000000DC(int func, struct drv_sif *drv, int a2, int a3);
+int func_00000F50();
+
+int (*drs_if_func[])(struct drv_sif *drv, int arg1, int arg2) = {
 	func_0000068C,
 	func_000006CC,
 	func_0000079C,
@@ -51,7 +75,7 @@ int (*drs_iface_func[])() = {
 	func_00000E0C,
 };
 
-const char *drs_iface_func_name[] = {
+const char *drs_if_func_name[] = {
 	"RCV_START",
 	"RCV_READ",
 	"RCV_END",
@@ -65,27 +89,6 @@ const char *drs_iface_func_name[] = {
 	"SEND_ON",
 	"DEBUG",
 };
-
-struct drv_sif {
-	struct deci2_iface *iface;
-	int flag;
-	int field_8;
-	int field_c; // current protocol
-	int field_10;
-	int field_14; // current transfer size
-	int field_18;
-	int field_1c;
-	int field_20;
-	int field_24;
-	int field_28;
-	int field_2c;
-	int field_30;
-};
-
-struct drv_sif sifdrv;
-
-int func_000000DC(int func, struct drv_sif *drv, int a2, int a3);
-int func_00000F50();
 
 int
 start(int a0)
@@ -122,10 +125,10 @@ int
 func_000000DC(int func, struct drv_sif *drv, int a2, int a3)
 {
 	if ((drv->field_8 & 0x800) && func != 6) {
-		sceDeci2ExPanic("\t\tsif2 func %s flag = %x\n", drs_iface_func_name[func], sifdrv.flag);
+		sceDeci2ExPanic("\t\tsif2 func %s flag = %x\n", drs_if_func_name[func], sifdrv.flag);
 	}
 
-	drs_iface_func[func](drv, a2, a3);
+	return drs_if_func[func](drv, a2, a3);
 }
 
 void
@@ -255,10 +258,56 @@ func_000003F4(struct drv_sif *drv)
 	}
 }
 
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000518);
+void
+func_00000518(struct drv_sif *drv)
+{
+	int again;
+
+	do {
+		again = 0;
+
+		if (drv->flag & 0x40) {
+			again = 1;
+			drv->flag = drv->flag & ~0x40;
+			sceDeci2IfEventHandler(4, drv->iface, drv->field_2c, 0, 0);
+			if (drv->flag & 1) {
+				drv->flag |= 0x20;
+			}
+		}
+
+		if (!(drv->flag & 0x210)) {
+			if ((drv->flag & 0x21) == 0x21) {
+				again = 1;
+				drv->flag &= ~0x20;
+				sceDeci2IfEventHandler(3, drv->iface, 0, 0, 0);
+			}
+		}
+
+		if (drv->flag & 0x4000) {
+			again = 1;
+			drv->flag &= ~0x4000;
+			if (drv->field_14 <= drv->field_18) {
+				drv->flag &= ~0x200;
+			} else {
+				drv->flag |= 0x2000;
+			}
+
+			sceDeci2IfEventHandler(2, drv->iface, drv->field_1c, 0, 0);
+		}
+
+		if (!(drv->flag & 0x1000)) {
+			if (drv->flag & 0x2000) {
+				again = 1;
+				drv->flag &= ~0x2000;
+				sceDeci2IfEventHandler(1, drv->iface, drv->field_14 - drv->field_18, drv->field_c,
+				  drv->field_10);
+			}
+		}
+	} while (again);
+}
 
 int
-func_0000068C(struct drv_sif *drv)
+func_0000068C(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag |= 0x100;
 
@@ -269,10 +318,41 @@ func_0000068C(struct drv_sif *drv)
 	return 0;
 }
 
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_000006CC);
+int
+func_000006CC(struct drv_sif *drv, int arg1, int arg2)
+{
+	void *ptr = (void *)arg1;
+	int size = arg2;
+
+	if (drv->flag & 2) {
+		drv->flag |= 0x2000;
+		return 0;
+	}
+
+	size = (size + 3) & ~3;
+
+	if (drv->field_14 - drv->field_18 < size) {
+		size = drv->field_14 - drv->field_18;
+	}
+
+	if (size <= 0) {
+		return size;
+	}
+
+	if (drv->field_8 & 0x800) {
+		sceDeci2ExPanic("\t\tsif2 rcv dma start %d byte\n", size);
+	}
+
+	drv->field_1c = size;
+	drv->field_20 = ptr;
+	EnableIntr(34);
+	sceSifDma2Transfer(ptr, size, 16);
+
+	return size;
+}
 
 int
-func_0000079C(struct drv_sif *drv)
+func_0000079C(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag &= ~0x100;
 
@@ -283,12 +363,23 @@ func_0000079C(struct drv_sif *drv)
 	return 0;
 }
 
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_000007E0);
+int
+func_000007E0(struct drv_sif *drv, int a2, int a3)
+{
+	drv->flag |= 0x25;
+	drv->field_24 = a2;
+	drv->field_28 = a3;
+	if (drv->field_8 & 0x400) {
+		sceDeci2ExPanic("\t\tsif2 packet send start flag = %x\n", drv->flag);
+	}
+
+	return 0;
+}
 
 INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000828);
 
 int
-func_00000940(struct drv_sif *drv)
+func_00000940(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag &= ~0x21;
 
@@ -301,10 +392,33 @@ func_00000940(struct drv_sif *drv)
 
 INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000984);
 
-INCLUDE_ASM("asm/deci2drs/nonmatchings/deci2drs", func_00000B80);
+int
+func_00000B80(struct drv_sif *drv, int arg1, int arg2)
+{
+	uint msflg;
+
+	if (drv->flag & 0x100000 && sceSifCheckInit()) {
+		sceSifDma2Init();
+		D_A00003E4 = 0x100;
+		drv->flag = (drv->flag & ~0x100000) | 0x200000;
+		sceSifSetSMflg(0x80000000);
+		sceSifIntrOther();
+	} else if (drv->flag & 0x200000 && read32(I_STAT) & 2) {
+		msflg = sceSifGetMSflg();
+		write32(I_STAT, ~2);
+		if (msflg & 0x40000000) {
+			sceSifSetMSflg(0x40000000);
+			drv->flag &= ~0x200000;
+			drs_if_func[6] = func_00000984;
+			sceDeci2IfEventHandler(5, sifdrv.iface, 0, 0, 0);
+		}
+	}
+
+	return 0;
+}
 
 int
-func_00000CAC(struct drv_sif *drv)
+func_00000CAC(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag |= 0x1000;
 
@@ -316,7 +430,7 @@ func_00000CAC(struct drv_sif *drv)
 }
 
 int
-func_00000CEC(struct drv_sif *drv)
+func_00000CEC(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag &= ~0x1000;
 
@@ -332,7 +446,7 @@ func_00000CEC(struct drv_sif *drv)
 }
 
 int
-func_00000D58(struct drv_sif *drv)
+func_00000D58(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag |= 0x10;
 
@@ -344,7 +458,7 @@ func_00000D58(struct drv_sif *drv)
 }
 
 int
-func_00000D98(struct drv_sif *drv)
+func_00000D98(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag &= ~0x10;
 
@@ -360,13 +474,14 @@ func_00000D98(struct drv_sif *drv)
 }
 
 int
-func_00000E04(struct drv_sif *drv, int a2, int a3)
+func_00000E04(struct drv_sif *drv, int arg1, int arg2)
 {
-	drv->field_8 = a2;
+	drv->field_8 = arg1;
+	// BUG: missing return
 }
 
-void
-func_00000E0C(struct drv_sif *drv)
+int
+func_00000E0C(struct drv_sif *drv, int arg1, int arg2)
 {
 	uint msflg;
 
@@ -375,6 +490,7 @@ func_00000E0C(struct drv_sif *drv)
 		drv->flag |= bits;
 		drv->flag &= ~0x200000;
 
+		// BUG: wrong return
 		return;
 	}
 
@@ -399,9 +515,11 @@ func_00000E0C(struct drv_sif *drv)
 			sceSifSetMSflg(0x40000000);
 			drv->flag |= 0x100000;
 			drv->flag &= ~0x200000;
-			drs_iface_func[6] = func_00000B80;
+			drs_if_func[6] = func_00000B80;
 
-            break;
+			break;
 		}
 	}
+
+	// BUG: missing return
 }

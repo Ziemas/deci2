@@ -10,7 +10,6 @@ options:
     src_path: src/deci2drs
     asset_path: assets/deci2drs
     build_path: build
-    subalign: 4
 
     extensions_path: tools/splat_ext 
     symbol_addrs_path: config/deci2drs/symbol_addrs.txt
@@ -21,6 +20,7 @@ options:
     migrate_rodata_to_functions: True
     named_regs_for_c_funcs: False
     make_full_disasm_for_code: True
+    hasm_in_src_path: True
 
     # compiler 
     compiler: GCC
@@ -38,7 +38,7 @@ segments:
       bss_size: 0x34
       subsegments:
         - [0x0, c, deci2drs]
-        - [0xf50, asm, poll]
+        - [0xf50, hasm, poll]
         - [0xfa0, asm, ilb_stub]
         - [0x10b0, .rodata, deci2drs]
         - [0x13f0, .data, deci2drs]
