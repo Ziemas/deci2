@@ -1,1 +1,19 @@
 start = 0x0; // type:func
+
+memset = 0x1884; // type:func
+
+EnableIntr = 0x18a8; // type:func
+DisableDispatchIntr = 0x18b0; // type:func
+
+AllocHardTimer = 0x18d4; // type:func
+FreeHardTimer = 0x18dc; // type:func
+SetTimerMode = 0x18e4; // type:func
+SetTimerCounter = 0x18ec; // type:func
+GetTimerCounter = 0x18f4; // type:func
+SetTimerCompare = 0x18fc; // type:func
+
+
+sceDeci2ExPanic = 0x1920; // type:func
+sceDeci2IfEventHandler = 0x1928; // type:func
+sceDeci2IfCreate = 0x1930; // type:func
+sceDeci2DbgPrintStatus = 0x1938; // type:func

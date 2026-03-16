@@ -2,3 +2,27 @@ start = 0x0; // type:func
 
 func_00000194 = 0x194; // type:func size:0x298
 func_00000430 = 0x430; // type:func
+
+memset = 0x16f4; // type:func
+strcpy = 0x16fc; // type:func
+strlen = 0x1704; // type:func
+
+GetModloadInternalData = 0x1728; // type:func
+LoadModule = 0x1730; // type:func
+StartModule = 0x1738; // type:func
+
+CpuInvokeInKmode = 0x175c; // type:func
+
+CreateThread = 0x1780; // type:func
+StartThread = 0x1788; // type:func
+ChangeThreadPriority = 0x1790; // type:func
+SleepThread = 0x1798; // type:func
+
+sceDeci2Open = 0x17bc; // type:func
+sceDeci2ExRecv = 0x17c4; // type:func
+sceDeci2ExSend = 0x17cc; // type:func
+sceDeci2ReqSend = 0x17d4; // type:func
+sceDeci2ExReqSend = 0x17dc; // type:func
+sceDeci2ExPanic = 0x17e4; // type:func
+sceDeci2ExWakeupThread = 0x17ec; // type:func
+sceDeci2AddDbgGroup = 0x17f4; // type:func

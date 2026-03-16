@@ -1,1 +1,41 @@
 start = 0x0; // type:func
+
+Kprintf = 0x3364; // type:func
+
+QueryBootMode = 0x3388; // type:func
+
+memcpy = 0x33ac; // type:func
+memset = 0x33b4; // type:func
+strlen = 0x33bc; // type:func
+
+CpuSuspendIntr = 0x33e0; // type:func
+CpuResumeIntr = 0x33e8; // type:func
+
+CreateEventFlag = 0x340c; // type:func
+DeleteEventFlag = 0x3414; // type:func
+SetEventFlag = 0x341c; // type:func
+ClearEventFlag = 0x3424; // type:func
+WaitEventFlag = 0x342c; // type:func
+PollEventFlag = 0x3434; // type:func
+
+CreateSema = 0x3458; // type:func
+DeleteSema = 0x3460; // type:func
+SignalSema = 0x3468; // type:func
+WaitSema = 0x3470; // type:func
+
+open = 0x3494; // type:func
+close = 0x349c; // type:func
+AddDrv = 0x34a4; // type:func
+DelDrv = 0x34ac; // type:func
+
+sceDeci2Open = 0x34d0; // type:func
+sceDeci2Close = 0x34d8; // type:func
+sceDeci2ExRecv = 0x34e0; // type:func
+sceDeci2ExSend = 0x34e8; // type:func
+sceDeci2ReqSend = 0x34f0; // type:func
+sceDeci2ExReqSend = 0x34f8; // type:func
+sceDeci2ExPanic = 0x3500; // type:func
+sceDeci2Poll = 0x3508; // type:func
+sceDeci2ExSetEventFlag = 0x3510; // type:func
+
+
