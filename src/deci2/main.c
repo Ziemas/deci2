@@ -36,13 +36,13 @@ func_00000240(int *arg1)
 	return 0;
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_0000029C);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2Shutdown);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000330);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2GetStatus);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000340);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2SetDebugFormatRoutine);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000350);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2SetDebugFlags);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000360);
 
@@ -50,51 +50,51 @@ INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000524);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000558);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000678);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2Close);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_000006A4);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExRecv);
 
 INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_00005AA0);
 
 INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_00005AB0);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000770);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExReqSend);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000978);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ReqSend);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000A18);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExSend);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000B04);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExLock);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000B6C);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExUnLock);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000C08);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExRecvSuspend);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000C8C);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExRecvUnSuspend);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000D24);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExPanic);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000DA4);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000DE8);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000E20);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2DbgPrintStatus);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000F08);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2SetPollCallback);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00000F1C);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExWakeupThread);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00001014);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExSignalSema);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00001110);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExSetEventFlag);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/main", func_0000121C);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00001364);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_000014AC);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2IfCreate);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_000014E4);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2IfEventHandler);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00001BA0);
 
@@ -110,7 +110,7 @@ INCLUDE_ASM("asm/deci2/nonmatchings/main", func_0000231C);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/main", func_000025BC);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/main", func_000027F4);
+INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2ExPoll);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/main", sceDeci2Poll);
 
