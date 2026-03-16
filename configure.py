@@ -36,9 +36,12 @@ CROSS = "mips-linux-gnu-"
 
 build_targets = [
     "deci2",
+    "deci2drp",
     "deci2drs",
+    "deci2file",
     "deci2hsyn",
     "deci2kprt",
+    "deci2load",
 ]
 
 TARGET_ELFS = [

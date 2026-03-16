@@ -35,7 +35,7 @@ segments:
       type: code
       start: 0x0
       vram: 0x0
-      bss_size: 0x50
+      bss_size: 0x0
       subsegments:
         # .text
         - [0x0, c, deci2hsyn]
