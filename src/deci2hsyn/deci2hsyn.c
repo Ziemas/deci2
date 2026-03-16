@@ -7,15 +7,15 @@ ModuleInfo Module = { "Deci2_host_sync", 0x101 };
 
 /* TODO */
 struct Deci2Status {
-	int unk0x0;
-	int unk0x4;
-	int unk0x8;
-	int unk0xc;
-	int unk0x10;
-	int unk0x14;
-	int unk0x18;
-	int unk0x1c;
-	int unk0x20;
+	int unk0;
+	int unk4;
+	int unk8;
+	int unkC;
+	int unk10;
+	int unk14;
+	int unk18;
+	int unk1C;
+	int unk20;
 };
 
 /* TODO */
@@ -26,7 +26,7 @@ start()
 {
 	int *bootmode;
 
-	if (!sceDeci2GetStatus()->unk0x20) {
+	if (!sceDeci2GetStatus()->unk20) {
 		return 1;
 	}
 

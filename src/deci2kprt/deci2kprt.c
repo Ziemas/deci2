@@ -22,7 +22,7 @@ struct kp_state {
 	int wrpos;
 	int rdpos;
 	struct kttyp_cmd cmd;
-	int unk_0x68;
+	int unk68;
 };
 
 struct kp_state kp;
