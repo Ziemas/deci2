@@ -147,39 +147,3 @@ INCLUDE_ASM("asm/deci2/nonmatchings/main", func_000035D4);
 INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00003600);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/main", func_00003668);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_000062C0);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_000062E0);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_000062E4);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_000062FC);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_00006314);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_00006338);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", jtbl_00006358);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_00006380);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_000063A4);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_000063C0);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_000063D8);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_00006400);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_0000641C);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", D_0000643C);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", jtbl_00006460);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", jtbl_000064C0);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", jtbl_00006520);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/main", jtbl_00006540);

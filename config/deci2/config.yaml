@@ -40,11 +40,17 @@ segments:
         # .text
         - [0x0, c, main]
         - [0x3680, asm, export_stub]
-        - [0x3760, asm]
-        - [0x4f9c, asm, exc]
+        - [0x3760, c, sdb]
+
+        # idk how to split this out without messing up alignment
+        - [0x4fa0, asm, exc] 
+        # should be this?
+        # - [0x4f9c, asm, exc]
         - [0x58e0, asm, ilb_stub]
         - [0x5aa0, .rodata, main]
+        - [0x62c0, .rodata, sdb]
         - [0x6560, data, main]
+        - [0x65f0, data, sdb]
 
         # .sbss / .bss
         - { type: sbss, vram: 0x66f0, name: deci2 }
