@@ -4,18 +4,18 @@
 #include "sys/types.h"
 
 struct deci2_iface {
-	int field_0;
-	int field_4;
-	int field_8;
-	int field_C;
-	int field_10;
-	int field_14;
-	int field_18;
-	int field_1C;
-	int field_20;
-	int field_24;
-	int field_28;
-	int field_2C;
+	int unk0;
+	int unk4;
+	int unk8;
+	int unkC;
+	int unk10;
+	int unk14;
+	int unk18;
+	int unk1C;
+	int unk20;
+	int unk24;
+	int unk28;
+	int unk2C;
 };
 
 struct deci2_iface *sceDeci2IfCreate(char, void *, int (*)(), int (*)());
