@@ -1,0 +1,4 @@
+start = 0x0; // type:func
+
+func_00000194 = 0x194; // type:func size:0x298
+func_00000430 = 0x430; // type:func
