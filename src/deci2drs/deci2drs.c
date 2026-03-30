@@ -1,3 +1,4 @@
+#include "bits.h"
 #include "common.h"
 #include "deci2.h"
 #include "deci2_internal.h"
@@ -10,13 +11,10 @@
 #include <loadcore.h>
 #include <string.h>
 
-#define I_STAT		0xbf801070
-#define DMA_DICR	0xbf8010f4
-#define IRQ_CTRL	0xbf801450
-#define DMA_DMACEN	0xbf801578
-
-#define read32(a) (*(volatile u_int *)(a))
-#define write32(a, b) (*(volatile u_int *)(a) = (b))
+#define I_STAT 0xbf801070
+#define DMA_DICR 0xbf8010f4
+#define IRQ_CTRL 0xbf801450
+#define DMA_DMACEN 0xbf801578
 
 extern int D_A00003E0;
 extern int D_A00003E4;
@@ -211,8 +209,7 @@ func_000002B4(struct drv_sif *drv)
 		drv->flag |= 2;
 		sceSifSetMSflg(0x40000000);
 		if ((drv->unk8 & 0x800)) {
-			sceDeci2ExPanic("\t\tsif2 send dma start addr=%x, size=%x\n", drv->unk30,
-			  drv->unk2C);
+			sceDeci2ExPanic("\t\tsif2 send dma start addr=%x, size=%x\n", drv->unk30, drv->unk2C);
 		}
 		EnableIntr(34);
 		sceSifDma2Transfer((void *)drv->unk30, drv->unk2C, 1);
@@ -430,7 +427,7 @@ func_00000940(struct drv_sif *drv, int arg1, int arg2)
 }
 
 int
-func_00000984(struct drv_sif* drv, int arg1, int arg2)
+func_00000984(struct drv_sif *drv, int arg1, int arg2)
 {
 	if (func_00000F50(drv) != 0) {
 		if ((read32(DMA_DICR) & 0x4000000) != 0 && (read32(I_STAT) & 0x8) != 0) {
@@ -441,7 +438,8 @@ func_00000984(struct drv_sif* drv, int arg1, int arg2)
 			write32(I_STAT, ~0x8);
 			write32(DMA_DICR, read32(DMA_DICR) & ~0xfb840000);
 
-			while ((read32(DMA_DICR) & 0x800000) != 0);
+			while ((read32(DMA_DICR) & 0x800000) != 0)
+				;
 
 			while (read32(DMA_DMACEN) != 1) {
 				write32(DMA_DMACEN, 1);

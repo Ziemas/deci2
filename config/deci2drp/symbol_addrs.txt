@@ -1,5 +1,6 @@
 start = 0x0; // type:func
-
+drp_if_func= 0x1c48; // size:0x30
+drp_if_func_name = 0x1c7c; // size:0x30
 memset = 0x1884; // type:func
 
 EnableIntr = 0x18a8; // type:func
