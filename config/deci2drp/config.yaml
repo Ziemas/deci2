@@ -39,6 +39,7 @@ segments:
       subsegments:
         # .text
         - [0x0, c, deci2drp]
+        - [0x1820, asm, poll]
         - [0x1870, asm, ilb_stub]
         - [0x1950, .rodata, deci2drp]
         - [0x1c40, .data, deci2drp]
