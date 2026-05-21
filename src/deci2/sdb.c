@@ -55,9 +55,3 @@ INCLUDE_ASM("asm/deci2/nonmatchings/sdb", func_00004E6C);
 INCLUDE_ASM("asm/deci2/nonmatchings/sdb", func_00004E94);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/sdb", func_00004EBC);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/sdb", func_00004EF0);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/sdb", func_00004F24);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/sdb", func_00004F60);

@@ -42,10 +42,7 @@ segments:
         - [0x3680, asm, export_stub]
         - [0x3760, c, sdb]
 
-        # idk how to split this out without messing up alignment
-        - [0x4fa0, asm, exc] 
-        # should be this?
-        # - [0x4f9c, asm, exc]
+        - [0x4ef0, asm, exc] 
         - [0x58e0, asm, ilb_stub]
         - [0x5aa0, .rodata, main]
         - [0x62c0, .rodata, sdb]
