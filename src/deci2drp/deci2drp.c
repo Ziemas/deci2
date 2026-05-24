@@ -15,7 +15,7 @@ ModuleInfo Module = { "Deci2_PIF_interface_driver", 0x101 };
 #define UNKHW ((volatile struct pif_reg *)0xbf803200)
 
 struct pif_reg {
-	u_short unk0;
+	u_short board_id;
 	u_short unk2;
 	u_short unk4;
 	u_short unk6;
@@ -58,7 +58,7 @@ struct drv_pif {
 	char unkD;
 	char unkE;
 	char unkF;
-	u_short unk10;
+	u_short fifo_size;
 	int irq_num;
 	int (*if_handler)();
 	int unk1C;
@@ -148,10 +148,10 @@ start()
 	unk = 0;
 	unk = 0;
 
-	v4 = PIFREG->unk0;
+	v4 = PIFREG->board_id;
 	if ((v4 == 0x4126 || v4 == 0x4127) && (PIFREG->unk4 & 0x100) == 0) {
-		PIFREG->unk0 = 0;
-		v4 = PIFREG->unk0;
+		PIFREG->board_id = 0;
+		v4 = PIFREG->board_id;
 		if (v4 == 0x4126 || v4 == 0x4127) {
 			pif = PIFREG;
 		}
@@ -172,9 +172,9 @@ start()
 	pifdrv.unkD = 16;
 	pifdrv.unkF = 8;
 	pifdrv.unkE = 1;
-	pifdrv.unk10 = 127;
-	if (PIFREG->unk0 == 0x4126) {
-		pifdrv.unk10 = 1023;
+	pifdrv.fifo_size = 0x7f;
+	if (PIFREG->board_id == 0x4126) {
+		pifdrv.fifo_size = 0x3ff;
 	}
 
 	if (!func_000002E8(&pifdrv)) {
