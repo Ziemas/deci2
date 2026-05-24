@@ -22,5 +22,7 @@ struct deci2_iface *sceDeci2IfCreate(char, void *, int (*)(), int (*)());
 void sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protocol,
   int node);
 void sceDeci2ExPoll();
+void sceDeci2DbgPrintStatus(void (*cb)(void *context, int c), void *param);
+
 
 #endif // DECI2_INTERNAL_H_

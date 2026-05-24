@@ -97,17 +97,17 @@ start(int a0)
 
 	asm volatile("mfc0 %0, $15" : "=r"(prid) :);
 	if (prid < 16) {
-		return 1;
+		return NO_RESIDENT_END;
 	}
 
 	if ((read32(IRQ_CTRL) & 8)) {
-		return 1;
+		return NO_RESIDENT_END;
 	}
 
 	if (!a0) {
 		bootmode = QueryBootMode(3);
 		if (bootmode && (bootmode[1] & 0x40)) {
-			return 1;
+			return NO_RESIDENT_END;
 		}
 	}
 
@@ -117,7 +117,7 @@ start(int a0)
 	DisableDispatchIntr(1);
 	DisableDispatchIntr(34);
 	EnableIntr(1);
-	return 0;
+	return RESIDENT_END;
 }
 
 int
