@@ -261,7 +261,38 @@ func_000002E8(struct drv_pif *drv)
 	return 1;
 }
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000410);
+void
+func_00000410(void *context, int c)
+{
+	struct drv_pif *drv = context;
+	int i;
+
+	if (c >= 255) {
+		return;
+	}
+
+	if (drv->flag & 0x80000000) {
+		i = 0;
+		if (!(PIFREG->unk20 & 2)) {
+			while (1) {
+				if (i++ > 0x27FFFFF) {
+					break;
+				}
+
+				if ((PIFREG->unk20 & 2)) {
+					break;
+				}
+			}
+		}
+
+		drv->flag &= ~0x80000000;
+	}
+
+	PIFREG->unk2C = 2;
+	PIFREG->unkC = c & 0xff;
+	PIFREG->unk30 = 1;
+	drv->flag |= 0x80000000;
+}
 
 int
 func_000004C4(int func, struct drv_pif *drv, int a2, int a3)
