@@ -353,13 +353,12 @@ func_00000608(struct drv_pif *drv)
 
 		func_00001378(drv, (int *)&drv->unk1C, 2, 1);
 		drv->unk24 = 0;
-		if (drv->unk1C >= 8) {
-			return;
-		}
 
-		drv->flag &= ~0x2000;
-		sceDeci2ExPanic("pif receive packet have illegal length\n");
-		func_00001588(drv);
+		if (drv->unk1C < 8) {
+			drv->flag &= ~0x2000;
+			sceDeci2ExPanic("pif receive packet have illegal length\n");
+			func_00001588(drv);
+		}
 
 		return;
 	}
