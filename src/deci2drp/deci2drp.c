@@ -11,6 +11,9 @@
 
 ModuleInfo Module = { "Deci2_PIF_interface_driver", 0x101 };
 
+#define max(X, Y) ((X) > (Y) ? (X) : (Y))
+#define min(X, Y) ((X) < (Y) ? (X) : (Y))
+
 #define PIFREG ((volatile struct pif_reg *)0xbf803800)
 #define UNKHW ((volatile struct pif_reg *)0xbf803200)
 
@@ -422,10 +425,7 @@ func_00000708(struct drv_pif *drv)
 					unk = func_00000F44(drv);
 					unk2 = drv->hdr.len;
 
-					if (unk < unk2) {
-						unk2 = unk;
-					}
-					unk = unk2;
+					unk = min(unk, unk2);
 				}
 
 				cont = 1;
@@ -460,20 +460,16 @@ func_00000904(struct drv_pif *drv, int a2, int a3)
 	} else {
 		unk = func_00000F44(drv);
 		unk2 = drv->hdr.len - drv->unk24;
-		if (unk < unk2) {
-			unk2 = unk;
-		}
-		unk = unk2;
+
+		unk = min(unk, unk2);
 		if (drv->unk4 & 0x200) {
 			sceDeci2ExPanic("\tpif RxCounter is zero .. can read %d byte\n", unk);
 		}
 	}
 
-	if (unk < a3) {
-		a3 = unk;
-	}
-
+	a3 = min(unk, a3);
 	unk = a3;
+
 	if (a3 > 0) {
 		drv->unk28 = a3;
 		if (drv->unk24 == 0) {
@@ -537,9 +533,7 @@ func_00000B6C(struct drv_pif *drv, int a2, int a3)
 	int unk;
 
 	unk = func_00000EC0(drv);
-	if (unk < a3) {
-		a3 = unk;
-	}
+	a3 = min(unk, a3);
 
 	if (a3 > 0) {
 		drv->unk2C = a3;
