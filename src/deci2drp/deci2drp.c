@@ -61,9 +61,9 @@ struct drv_pif {
 	short fifo_size;
 	int irq_num;
 	int (*unk18)();
-	u_short unk1C; // rx len?
-	u_short unk20;
-	u_char unk23;
+
+	sceDeci2Hdr hdr;
+
 	int unk24;
 	int unk28;
 	int unk2C;
@@ -127,6 +127,7 @@ void func_00000E7C();
 void func_00000EA0();
 void func_00000E5C();
 int func_00000EC0(struct drv_pif *drv);
+int func_00000F44(struct drv_pif *drv);
 void func_000015FC(struct drv_pif *drv, int a2, int a3);
 void func_00001378(struct drv_pif *drv, int *a2, int a3, int a4);
 void func_00001588(struct drv_pif *drv);
@@ -351,15 +352,15 @@ func_00000608(struct drv_pif *drv)
 	func_00000E5C();
 	drv->flag |= 0x2000;
 
-	if (drv->unk1C == 0) {
+	if (drv->hdr.len == 0) {
 		if (drv->unk4 & 0x100) {
 			sceDeci2ExPanic("pif new rcv packet found flag = %x\n", drv->flag);
 		}
 
-		func_00001378(drv, (int *)&drv->unk1C, 2, 1);
+		func_00001378(drv, (int *)&drv->hdr, 2, 1);
 		drv->unk24 = 0;
 
-		if (drv->unk1C < 8) {
+		if (drv->hdr.len < 8) {
 			drv->flag &= ~0x2000;
 			sceDeci2ExPanic("pif receive packet have illegal length\n");
 			func_00001588(drv);
@@ -371,7 +372,68 @@ func_00000608(struct drv_pif *drv)
 	}
 }
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000708);
+void
+func_00000708(struct drv_pif *drv)
+{
+	int unk, unk2;
+	int cont = 1;
+
+	while (cont) {
+		cont = 0;
+
+		if (drv->flag & 0x40) {
+			drv->flag &= ~0x40;
+
+			cont = 1;
+			sceDeci2IfEventHandler(4, drv->iface, drv->unk2C, 0, 0);
+			if (drv->flag & 1) {
+				func_00000568(drv, 512);
+			}
+		}
+
+		if ((drv->flag & 0x10) == 0) {
+			if ((drv->flag & 0x21) == 0x21) {
+				if (drv->unk4 & 0x200) {
+					sceDeci2ExPanic("pif report_events IFM_OUT\n");
+				}
+
+				drv->flag &= ~0x20;
+
+				cont = 1;
+				sceDeci2IfEventHandler(3, drv->iface, 0, 0, 0);
+			}
+		}
+
+		if (drv->flag & 0x4000) {
+			drv->flag &= ~0x4000;
+
+			cont = 1;
+			sceDeci2IfEventHandler(2, drv->iface, drv->unk28, 0, 0);
+			func_00000E38();
+		}
+
+		if ((drv->flag & 0x1000) == 0) {
+			if (drv->flag & 0x2000) {
+				drv->flag &= ~0x2000;
+
+				if (PIFREG->unk18) {
+					unk = drv->hdr.len;
+				} else {
+					unk = func_00000F44(drv);
+					unk2 = drv->hdr.len;
+
+					if (unk < unk2) {
+						unk2 = unk;
+					}
+					unk = unk2;
+				}
+
+				cont = 1;
+				sceDeci2IfEventHandler(1, drv->iface, unk, drv->hdr.proto, drv->hdr.dest);
+			}
+		}
+	}
+}
 
 int
 func_000008C4(struct drv_pif *drv, int a2, int a3)
@@ -384,8 +446,56 @@ func_000008C4(struct drv_pif *drv, int a2, int a3)
 	return 0;
 }
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000904);
-// int func_00000904(struct drv_pif *drv, int, int) {}
+int
+func_00000904(struct drv_pif *drv, int a2, int a3)
+{
+	volatile struct pif_reg *pif = PIFREG;
+	int unk, unk2;
+
+	if (pif->unk18) {
+		unk = drv->hdr.len - drv->unk24;
+		if (drv->unk4 & 0x200) {
+			sceDeci2ExPanic("\tpif RxCounter is non zero full size read %d byte\n", unk);
+		}
+	} else {
+		unk = func_00000F44(drv);
+		unk2 = drv->hdr.len - drv->unk24;
+		if (unk < unk2) {
+			unk2 = unk;
+		}
+		unk = unk2;
+		if (drv->unk4 & 0x200) {
+			sceDeci2ExPanic("\tpif RxCounter is zero .. can read %d byte\n", unk);
+		}
+	}
+
+	if (unk < a3) {
+		a3 = unk;
+	}
+
+	unk = a3;
+	if (a3 > 0) {
+		drv->unk28 = a3;
+		if (drv->unk24 == 0) {
+			unk = a3 - 8;
+			memcpy((void *)a2, &drv->hdr.len, 8);
+			a2 += 8;
+		}
+
+		if (unk > 0) {
+			func_00001378(drv, (int *)a2, ((u_int)unk + 3) >> 2, 0);
+		}
+
+		drv->unk24 += a3;
+		drv->flag |= 0x4000;
+	}
+
+	if (drv->unk4 & 0x200) {
+		sceDeci2ExPanic("\tpif read %d byte, %d/%d in packet\n", a3, drv->unk24, drv->hdr.len);
+	}
+
+	return a3;
+}
 
 int
 func_00000A84(struct drv_pif *drv, int a2, int a3)
@@ -398,7 +508,7 @@ func_00000A84(struct drv_pif *drv, int a2, int a3)
 	}
 
 	drv->flag &= ~0x2100;
-	drv->unk1C = 0;
+	drv->hdr.len = 0;
 
 	if ((drv->flag & 0x1000) == 0) {
 		func_00000E38();
