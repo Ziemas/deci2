@@ -55,13 +55,13 @@ struct drv_pif {
 	int unk4;
 	int flag;
 	char unkC;
-	char unkD;
+	u_char unkD;
 	char unkE;
 	char unkF;
-	u_short fifo_size;
+	short fifo_size;
 	int irq_num;
-	int (*if_handler)();
-	u_short unk1C;
+	int (*unk18)();
+	u_short unk1C; // rx len?
 	u_short unk20;
 	u_char unk23;
 	int unk24;
@@ -118,15 +118,20 @@ const char *drp_if_func_name[] = {
 
 int func_000002E8(struct drv_pif *drv);
 void func_00000410(void *context, int c);
-int func_00001820();
-int func_0000183C();
 int func_000004C4(int func, struct drv_pif *drv, int a2, int a3);
+void func_00000568(struct drv_pif *drv, int a2);
+void func_00000608(struct drv_pif *drv);
+void func_00000708(struct drv_pif *drv);
 void func_00000E38();
 void func_00000E7C();
 void func_00000EA0();
 void func_00000E5C();
+int func_00000EC0(struct drv_pif *drv);
+void func_000015FC(struct drv_pif *drv, int a2, int a3);
 void func_00001378(struct drv_pif *drv, int *a2, int a3, int a4);
 void func_00001588(struct drv_pif *drv);
+int func_00001820();
+int func_0000183C();
 
 int
 start()
@@ -189,12 +194,12 @@ start()
 	sceDeci2DbgPrintStatus(func_00000410, &pifdrv);
 	if (prid < 16 || (read32(0xbf801450) & 8) != 0) {
 		pifdrv.irq_num = 10;
-		pifdrv.if_handler = func_0000183C;
+		pifdrv.unk18 = func_0000183C;
 
 		pifdrv.iface = sceDeci2IfCreate(DECI2_NODE_HOST, &pifdrv, func_000004C4, func_0000183C);
 	} else {
 		pifdrv.irq_num = 23;
-		pifdrv.if_handler = func_00001820;
+		pifdrv.unk18 = func_00001820;
 		pifdrv.unkC = 1;
 
 		if ((*((u_char *)0xBF803100) & 8) == 0) {
@@ -359,12 +364,10 @@ func_00000608(struct drv_pif *drv)
 			sceDeci2ExPanic("pif receive packet have illegal length\n");
 			func_00001588(drv);
 		}
-
-		return;
-	}
-
-	if (drv->unk4 & 0x200) {
-		sceDeci2ExPanic("pif  rcv packet continus flag = %x\n", drv->flag);
+	} else {
+		if (drv->unk4 & 0x200) {
+			sceDeci2ExPanic("pif  rcv packet continus flag = %x\n", drv->flag);
+		}
 	}
 }
 
@@ -384,8 +387,26 @@ func_000008C4(struct drv_pif *drv, int a2, int a3)
 INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000904);
 // int func_00000904(struct drv_pif *drv, int, int) {}
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000A84);
-// int func_00000A84(struct drv_pif *drv, int, int) {}
+int
+func_00000A84(struct drv_pif *drv, int a2, int a3)
+{
+	volatile struct pif_reg *pif = PIFREG;
+
+	pif->unk18 = 1;
+	if (drv->unk4 & 0x100) {
+		sceDeci2ExPanic("\tpif RxCounter Dec\n");
+	}
+
+	drv->flag &= ~0x2100;
+	drv->unk1C = 0;
+
+	if ((drv->flag & 0x1000) == 0) {
+		func_00000E38();
+		func_00000608(drv);
+	}
+
+	return 0;
+}
 
 int
 func_00000B0C(struct drv_pif *drv, int a2, int a3)
@@ -400,26 +421,110 @@ func_00000B0C(struct drv_pif *drv, int a2, int a3)
 	return 0;
 }
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000B6C);
-// int func_00000B6C(struct drv_pif *drv, int, int) {}
+int
+func_00000B6C(struct drv_pif *drv, int a2, int a3)
+{
+	int unk;
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000BEC);
-// int func_00000BEC(struct drv_pif *drv, int, int) {}
+	unk = func_00000EC0(drv);
+	if (unk < a3) {
+		a3 = unk;
+	}
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000C58);
-// int func_00000C58(struct drv_pif *drv, int, int) {}
+	if (a3 > 0) {
+		drv->unk2C = a3;
+		func_000015FC(drv, a2, ((u_int)a3 + 3) >> 2);
+		drv->flag |= 0x40;
+	}
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000CC8);
-// int func_00000CC8(struct drv_pif *drv, int, int) {}
+	return a3;
+}
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000D10);
-// int func_00000D10(struct drv_pif *drv, int, int) {}
+int
+func_00000BEC(struct drv_pif *drv, int a2, int a3)
+{
+	volatile struct pif_reg *pif = PIFREG;
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000D7C);
-// int func_00000D7C(struct drv_pif *drv, int, int) {}
+	pif->unk14 = 1;
+	if (drv->unk4 & 0x100) {
+		sceDeci2ExPanic("\tpif TxCounter inc\n");
+	}
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000DBC);
-// int func_00000DBC(struct drv_pif *drv, int, int) {}
+	drv->flag &= ~0x21;
+	func_00000EA0();
+	return 0;
+}
+
+int
+func_00000C58(struct drv_pif *drv, int a2, int a3)
+{
+	if (drv->unk18()) {
+		write32(0xbf801070, ~(1 << drv->irq_num));
+		func_00000568(drv, 512);
+		func_00000608(drv);
+	}
+
+	func_00000708(drv);
+	return 0;
+}
+
+int
+func_00000CC8(struct drv_pif *drv, int a2, int a3)
+{
+	drv->flag |= 0x1000;
+
+	if (drv->unk4 & 0x200) {
+		sceDeci2ExPanic("\tpif rcv off flag = %x\n", drv->flag);
+	}
+
+	func_00000E5C();
+
+	return 0;
+}
+
+int
+func_00000D10(struct drv_pif *drv, int a2, int a3)
+{
+	drv->flag &= ~0x1000;
+
+	if (drv->unk4 & 0x200) {
+		sceDeci2ExPanic("\tpif rcv on flag = %x\n", drv->flag);
+	}
+
+	if ((drv->flag & 0x6000) == 0) {
+		func_00000E38();
+	}
+
+	return 0;
+}
+
+int
+func_00000D7C(struct drv_pif *drv, int a2, int a3)
+{
+	drv->flag |= 0x10;
+
+	if (drv->unk4 & 0x200) {
+		sceDeci2ExPanic("\tpif send off flag = %x\n", drv->flag);
+	}
+
+	return 0;
+}
+
+int
+func_00000DBC(struct drv_pif *drv, int a2, int a3)
+{
+	drv->flag &= ~0x10;
+
+	if (drv->unk4 & 0x200) {
+		sceDeci2ExPanic("\tpif send on flag = %x\n", drv->flag);
+	}
+
+	if (drv->flag & 1) {
+		func_00000E7C();
+	}
+
+	return 0;
+}
 
 int
 func_00000E28(struct drv_pif *drv, int a1, int a2)
@@ -442,15 +547,89 @@ func_00000E38()
 	pif->unk28 = v | 0x210;
 }
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000E5C);
+void
+func_00000E5C()
+{
+	volatile struct pif_reg *pif = PIFREG;
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000E7C);
+	pif->unk28 &= ~0x210;
+}
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000EA0);
+void
+func_00000E7C()
+{
+	volatile struct pif_reg *pif = PIFREG;
+	int tmp = pif->unk28;
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000EC0);
+	pif->unk28 = 0;
+	pif->unk28 = tmp | 0x1000;
+}
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000F44);
+void
+func_00000EA0()
+{
+	volatile struct pif_reg *pif = PIFREG;
+
+	pif->unk28 &= ~0x1000;
+}
+
+int
+func_00000EC0(struct drv_pif *drv)
+{
+	volatile struct pif_reg *pif = PIFREG;
+	int unk = pif->unk10 ^ 0x1c03;
+
+	if (unk & 0x100) {
+		return 0x4000;
+	}
+
+	if (unk & 0x200) {
+		return 4 * (0x1000 - drv->fifo_size);
+	}
+
+	if (unk & 0x400) {
+		return 0x2000;
+	}
+
+	if (unk & 0x800) {
+		return 4 * (drv->fifo_size + 1);
+	}
+
+	if (unk & 0x1000) {
+		return 4;
+	}
+
+	return 0;
+}
+
+int
+func_00000F44(struct drv_pif *drv)
+{
+	volatile struct pif_reg *pif = PIFREG;
+	int unk = pif->unk10 ^ 0x1c03;
+
+	if (unk & 0x10) {
+		return 0x4000;
+	}
+
+	if (unk & 0x8) {
+		return 4 * (0x1000 - drv->fifo_size);
+	}
+
+	if (unk & 0x4) {
+		return 0x2004;
+	}
+
+	if (unk & 2) {
+		return 4 * (drv->fifo_size + 1);
+	}
+
+	if (unk & 1) {
+		return 4;
+	}
+
+	return 0;
+}
 
 INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000FC4);
 
@@ -458,6 +637,7 @@ INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_000011A4);
 
 INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00001378);
 
+/* Completely drain FIFO? */
 void
 func_00001588(struct drv_pif *drv)
 {
