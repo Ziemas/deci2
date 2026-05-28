@@ -59,7 +59,7 @@ struct drv_pif {
 	int flag;
 	char unkC;
 	u_char unkD;
-	char unkE;
+	u_char unkE;
 	char unkF;
 	short fifo_size;
 	int irq_num;
@@ -735,9 +735,105 @@ func_00000F44(struct drv_pif *drv)
 	return 0;
 }
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00000FC4);
+void
+func_00000FC4(struct drv_pif *drv, int a2, int a3, int a4)
+{
+	volatile struct pif_reg *pif = PIFREG;
+	u_short unk;
+	u_int chcr;
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_000011A4);
+	if (!a3) {
+		return;
+	}
+
+	write32(0xbf8010d0, a2);
+	write32(0xbf8010f0, read32(0xbf8010f0) | 0x800000);
+	pif->unk38 = drv->unkE;
+
+	unk = 0x8004;
+	chcr = 0x1000200;
+
+	if (a3 % drv->unkD) {
+		write16(0xbf8010d4, a3);
+		write16(0xbf8010d6, 1);
+		pif->unk3C = 1;
+	} else {
+		write16(0xbf8010d4, drv->unkD);
+		pif->unk3C = a3 / drv->unkD;
+		write16(0xbf8010d6, pif->unk3C);
+	}
+
+	if (a4) {
+		chcr |= 0x40000000;
+	}
+
+	if (drv->unkC & 2) {
+		write32(0xbf80101c, read32(0xbf80101c) | 0x40000000);
+		unk |= 2;
+		if ((drv->unkC & 4)) {
+			write8(0xbf803200, read8(0xbf803200) | 8);
+		}
+	} else {
+		write32(0xbf80101c, read32(0xbf80101c) & ~0x40000000);
+		if ((drv->unkC & 4)) {
+			write8(0xbf803200, read8(0xbf803200) & ~8);
+		}
+	}
+
+	write32(0xbf8010d8, chcr);
+	pif->unk34 = unk;
+
+	while ((read32(0xbf8010d8) & 0x1000000))
+		;
+}
+
+void
+func_000011A4(struct drv_pif *drv, int a2, int a3)
+{
+	volatile struct pif_reg *pif = PIFREG;
+	u_short unk;
+	u_int chcr;
+
+	if (!a3) {
+		return;
+	}
+
+	write32(0xbf8010d0, a2);
+	write32(0xbf8010f0, read32(0xbf8010f0) | 0x800000);
+	pif->unk38 = drv->unkE;
+
+	unk = 0x8004;
+	chcr = 0x1000201;
+
+	if (a3 % drv->unkD) {
+		write16(0xbf8010d4, a3);
+		write16(0xbf8010d6, 1);
+		pif->unk3C = 1;
+	} else {
+		write16(0xbf8010d4, drv->unkD);
+		pif->unk3C = a3 / drv->unkD;
+		write16(0xbf8010d6, pif->unk3C);
+	}
+
+	if (drv->unkC & 2) {
+		write32(0xbf80101c, read32(0xbf80101c) | 0x40000000);
+		unk |= 2;
+		if ((drv->unkC & 4)) {
+			write8(0xbf803200, read8(0xbf803200) | 8);
+		}
+	} else {
+		write32(0xbf80101c, read32(0xbf80101c) & ~0x40000000);
+		if ((drv->unkC & 4)) {
+			write8(0xbf803200, read8(0xbf803200) & ~8);
+		}
+	}
+
+	write32(0xbf8010d8, chcr);
+	pif->unk34 = unk;
+
+	while ((read32(0xbf8010d8) & 0x1000000))
+		;
+}
 
 INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00001378);
 
