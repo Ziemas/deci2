@@ -3,6 +3,7 @@
 #include "deci2.h"
 #include "deci2_internal.h"
 #include "intrman_internal.h"
+#include "iopregs.h"
 #include "loadcore_internal.h"
 #include "sif.h"
 #include "sif_internal.h"
@@ -10,11 +11,6 @@
 
 #include <loadcore.h>
 #include <string.h>
-
-#define I_STAT 0xbf801070
-#define DMA_DICR 0xbf8010f4
-#define IRQ_CTRL 0xbf801450
-#define DMA_DMACEN 0xbf801578
 
 extern int D_A00003E0;
 extern int D_A00003E4;
@@ -100,7 +96,7 @@ start(int a0)
 		return NO_RESIDENT_END;
 	}
 
-	if ((read32(IRQ_CTRL) & 8)) {
+	if ((*IRQ_CTRL & 8)) {
 		return NO_RESIDENT_END;
 	}
 
@@ -430,38 +426,38 @@ int
 func_00000984(struct drv_sif *drv, int arg1, int arg2)
 {
 	if (func_00000F50(drv) != 0) {
-		if ((read32(DMA_DICR) & 0x4000000) != 0 && (read32(I_STAT) & 0x8) != 0) {
-			while (read32(DMA_DMACEN) != 0) {
-				write32(DMA_DMACEN, 0);
+		if ((*D_ICR & 0x4000000) != 0 && (*I_STAT & 0x8) != 0) {
+			while (*D_DMACEN != 0) {
+				*D_DMACEN = 0;
 			}
 
-			write32(I_STAT, ~0x8);
-			write32(DMA_DICR, read32(DMA_DICR) & ~0xfb840000);
+			*I_STAT = ~0x8;
+			*D_ICR &= ~0xfb840000;
 
-			while ((read32(DMA_DICR) & 0x800000) != 0)
+			while ((*D_ICR & 0x800000) != 0)
 				;
 
-			while (read32(DMA_DMACEN) != 1) {
-				write32(DMA_DMACEN, 1);
+			while (*D_DMACEN != 1) {
+				*D_DMACEN = 1;
 			}
 
 			func_000003F4(drv);
 
-			while (read32(DMA_DMACEN) != 0) {
-				write32(DMA_DMACEN, 0);
+			while (*D_DMACEN != 0) {
+				*D_DMACEN = 0;
 			}
 
-			write32(DMA_DICR, (read32(DMA_DICR) & 0xffffff) | 0x800000);
+			*D_ICR = (*D_ICR & 0xffffff) | 0x800000;
 
-			while (read32(DMA_DMACEN) != 1) {
-				write32(DMA_DMACEN, 1);
+			while (*D_DMACEN != 1) {
+				*D_DMACEN = 1;
 			}
 		}
 
 		func_00000518(drv);
 
-		if ((read32(I_STAT) & 0x2) != 0) {
-			write32(I_STAT, ~0x2);
+		if ((*I_STAT & 0x2) != 0) {
+			*I_STAT = ~0x2;
 			func_000002B4(drv);
 			func_00000184(drv);
 			func_00000384(drv);
@@ -485,9 +481,9 @@ func_00000B80(struct drv_sif *drv, int arg1, int arg2)
 		drv->flag = (drv->flag & ~0x100000) | 0x200000;
 		sceSifSetSMflg(0x80000000);
 		sceSifIntrOther();
-	} else if (drv->flag & 0x200000 && read32(I_STAT) & 2) {
+	} else if (drv->flag & 0x200000 && *I_STAT & 2) {
 		msflg = sceSifGetMSflg();
-		write32(I_STAT, ~2);
+		*I_STAT = ~2;
 		if (msflg & 0x40000000) {
 			sceSifSetMSflg(0x40000000);
 			drv->flag &= ~0x200000;
@@ -586,12 +582,12 @@ func_00000E0C(struct drv_sif *drv, int arg1, int arg2)
 	sceSifIntrOther();
 
 	while (1) {
-		if (!(read32(I_STAT) & 2)) {
+		if (!(*I_STAT & 2)) {
 			continue;
 		}
 
 		msflg = sceSifGetMSflg();
-		write32(I_STAT, ~2);
+		*I_STAT = ~2;
 
 		if (msflg & 0x40000000) {
 			sceSifSetMSflg(0x40000000);
