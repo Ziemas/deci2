@@ -131,9 +131,9 @@ void func_00000EA0();
 void func_00000E5C();
 int func_00000EC0(struct drv_pif *drv);
 int func_00000F44(struct drv_pif *drv);
-void func_00001378(struct drv_pif *drv, u_int *a2, int a3, int a4);
-void func_00001588(struct drv_pif *drv);
-void func_000015FC(struct drv_pif *drv, u_int *a2, int a3);
+void drp_fifo_read(struct drv_pif *drv, u_int *a2, int a3, int a4);
+void drp_fifo_clear(struct drv_pif *drv);
+void drp_fifo_write(struct drv_pif *drv, u_int *a2, int a3);
 int func_00001820();
 int func_0000183C();
 
@@ -360,13 +360,13 @@ func_00000608(struct drv_pif *drv)
 			sceDeci2ExPanic("pif new rcv packet found flag = %x\n", drv->flag);
 		}
 
-		func_00001378(drv, (int *)&drv->hdr, 2, 1);
+		drp_fifo_read(drv, (int *)&drv->hdr, 2, 1);
 		drv->unk24 = 0;
 
 		if (drv->hdr.len < 8) {
 			drv->flag &= ~0x2000;
 			sceDeci2ExPanic("pif receive packet have illegal length\n");
-			func_00001588(drv);
+			drp_fifo_clear(drv);
 		}
 	} else {
 		if (drv->debug & 0x200) {
@@ -479,7 +479,7 @@ drp_rcv_read(struct drv_pif *drv, int a2, int a3)
 		}
 
 		if (unk > 0) {
-			func_00001378(drv, (int *)a2, ((u_int)unk + 3) >> 2, 0);
+			drp_fifo_read(drv, (int *)a2, ((u_int)unk + 3) >> 2, 0);
 		}
 
 		drv->unk24 += a3;
@@ -537,7 +537,7 @@ drp_send_write(struct drv_pif *drv, int a2, int a3)
 
 	if (a3 > 0) {
 		drv->unk2C = a3;
-		func_000015FC(drv, (u_int *)a2, ((u_int)a3 + 3) >> 2);
+		drp_fifo_write(drv, (u_int *)a2, ((u_int)a3 + 3) >> 2);
 		drv->flag |= 0x40;
 	}
 
@@ -736,7 +736,7 @@ func_00000F44(struct drv_pif *drv)
 }
 
 void
-func_00000FC4(struct drv_pif *drv, u_int madr, int size, int a4)
+drp_dma_read(struct drv_pif *drv, u_int madr, int size, int a4)
 {
 	volatile struct pif_reg *pif = PIFREG;
 	u_short unk;
@@ -790,7 +790,7 @@ func_00000FC4(struct drv_pif *drv, u_int madr, int size, int a4)
 }
 
 void
-func_000011A4(struct drv_pif *drv, u_int madr, int size)
+drp_dma_write(struct drv_pif *drv, u_int madr, int size)
 {
 	volatile struct pif_reg *pif = PIFREG;
 	u_short unk;
@@ -838,7 +838,7 @@ func_000011A4(struct drv_pif *drv, u_int madr, int size)
 }
 
 void
-func_00001378(struct drv_pif *drv, u_int *dst, int wcount, int a4)
+drp_fifo_read(struct drv_pif *drv, u_int *dst, int wcount, int a4)
 {
 	u_int *p = dst;
 	int size = wcount;
@@ -860,9 +860,9 @@ func_00001378(struct drv_pif *drv, u_int *dst, int wcount, int a4)
 				size = drv->unkD;
 			}
 
-			func_00000FC4(drv, (u_int)dst, size, 1);
+			drp_dma_read(drv, (u_int)dst, size, 1);
 			if (size < wcount) {
-				func_00000FC4(drv, (u_int)(dst + size), wcount - size, 1);
+				drp_dma_read(drv, (u_int)(dst + size), wcount - size, 1);
 			}
 		}
 	}
@@ -894,7 +894,7 @@ func_00001378(struct drv_pif *drv, u_int *dst, int wcount, int a4)
 
 /* Completely drain FIFO? */
 void
-func_00001588(struct drv_pif *drv)
+drp_fifo_clear(struct drv_pif *drv)
 {
 	volatile struct pif_reg *pif = PIFREG;
 	volatile u_int sp0; // needs volatile to make a stack frame...
@@ -909,7 +909,7 @@ func_00001588(struct drv_pif *drv)
 }
 
 void
-func_000015FC(struct drv_pif *drv, u_int *src, int wcount)
+drp_fifo_write(struct drv_pif *drv, u_int *src, int wcount)
 {
 	volatile struct pif_reg *pif = PIFREG;
 	u_int *p = src;
@@ -931,9 +931,9 @@ func_000015FC(struct drv_pif *drv, u_int *src, int wcount)
 				size = drv->unkD;
 			}
 
-			func_000011A4(drv, (u_int)src, size);
+			drp_dma_write(drv, (u_int)src, size);
 			if (size < wcount) {
-				func_000011A4(drv, (u_int)(src + size), wcount - size);
+				drp_dma_write(drv, (u_int)(src + size), wcount - size);
 			}
 		}
 	}
