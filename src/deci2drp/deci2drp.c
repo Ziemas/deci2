@@ -58,9 +58,9 @@ struct drv_pif {
 	int debug;
 	int flag;
 	char unkC;
-	u_char unkD;
-	u_char unkE;
-	u_char unkF;
+	u_char dma_chunk_size;
+	u_char dma_unk_cfg;
+	u_char dma_min_size;
 	short fifo_size;
 	int irq_num;
 	int (*unk18)();
@@ -183,9 +183,9 @@ start()
 	pif->unk24 = 0xe0c0;
 	pif->unk2C = 5;
 	memset(&pifdrv, 0, sizeof(pifdrv));
-	pifdrv.unkD = 16;
-	pifdrv.unkF = 8;
-	pifdrv.unkE = 1;
+	pifdrv.dma_chunk_size = 16;
+	pifdrv.dma_min_size = 8;
+	pifdrv.dma_unk_cfg = 1;
 	pifdrv.fifo_size = 0x7f;
 	if (PIFREG->board_id == 0x4126) {
 		pifdrv.fifo_size = 0x3ff;
@@ -748,18 +748,18 @@ drp_dma_read(struct drv_pif *drv, u_int madr, int size, int a4)
 
 	*D5_MADR = madr;
 	*D_PCR |= 0x800000;
-	pif->unk38 = drv->unkE;
+	pif->unk38 = drv->dma_unk_cfg;
 
 	unk = 0x8004;
 	chcr = 0x1000200;
 
-	if (size % drv->unkD) {
+	if (size % drv->dma_chunk_size) {
 		*D5_BCRW = size;
 		*D5_BCRN = 1;
 		pif->unk3C = 1;
 	} else {
-		*D5_BCRW = drv->unkD;
-		pif->unk3C = size / drv->unkD;
+		*D5_BCRW = drv->dma_chunk_size;
+		pif->unk3C = size / drv->dma_chunk_size;
 		*D5_BCRN = pif->unk3C;
 	}
 
@@ -802,18 +802,18 @@ drp_dma_write(struct drv_pif *drv, u_int madr, int size)
 
 	*D5_MADR = madr;
 	*D_PCR |= 0x800000;
-	pif->unk38 = drv->unkE;
+	pif->unk38 = drv->dma_unk_cfg;
 
 	unk = 0x8004;
 	chcr = 0x1000201;
 
-	if (size % drv->unkD) {
+	if (size % drv->dma_chunk_size) {
 		*D5_BCRW = size;
 		*D5_BCRN = 1;
 		pif->unk3C = 1;
 	} else {
-		*D5_BCRW = drv->unkD;
-		pif->unk3C = size / drv->unkD;
+		*D5_BCRW = drv->dma_chunk_size;
+		pif->unk3C = size / drv->dma_chunk_size;
 		*D5_BCRN = pif->unk3C;
 	}
 
@@ -845,7 +845,7 @@ drp_fifo_read(struct drv_pif *drv, u_int *dst, int wcount, int a4)
 	int i;
 	volatile struct pif_reg *pif = PIFREG;
 
-	if (wcount < drv->unkF || !(pifdrv.unkC & 1) || *D_DMACEN == 0) {
+	if (wcount < drv->dma_min_size || !(pifdrv.unkC & 1) || *D_DMACEN == 0) {
 		while (size-- > 0) {
 			*p++ = pif->unk40;
 		}
@@ -855,9 +855,9 @@ drp_fifo_read(struct drv_pif *drv, u_int *dst, int wcount, int a4)
 				sceDeci2ExPanic("\tfifo_read via dma\n");
 			}
 
-			size = wcount % drv->unkD;
+			size = wcount % drv->dma_chunk_size;
 			if (!size) {
-				size = drv->unkD;
+				size = drv->dma_chunk_size;
 			}
 
 			drp_dma_read(drv, (u_int)dst, size, 1);
@@ -916,7 +916,7 @@ drp_fifo_write(struct drv_pif *drv, u_int *src, int wcount)
 	int size = wcount;
 	int i;
 
-	if (wcount < drv->unkF || (u_int)src > 0xffffff || !(pifdrv.unkC & 1) || *D_DMACEN == 0) {
+	if (wcount < drv->dma_min_size || (u_int)src > 0xffffff || !(pifdrv.unkC & 1) || *D_DMACEN == 0) {
 		while (size-- > 0) {
 			pif->unk40 = *p++;
 		}
@@ -926,9 +926,9 @@ drp_fifo_write(struct drv_pif *drv, u_int *src, int wcount)
 				sceDeci2ExPanic("\tfifo_write via dma\n");
 			}
 
-			size = wcount % drv->unkD;
+			size = wcount % drv->dma_chunk_size;
 			if (!size) {
-				size = drv->unkD;
+				size = drv->dma_chunk_size;
 			}
 
 			drp_dma_write(drv, (u_int)src, size);
