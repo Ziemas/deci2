@@ -55,12 +55,12 @@ struct pif_reg {
 
 struct drv_pif {
 	struct deci2_iface *iface;
-	int unk4;
+	int debug;
 	int flag;
 	char unkC;
 	u_char unkD;
 	u_char unkE;
-	char unkF;
+	u_char unkF;
 	short fifo_size;
 	int irq_num;
 	int (*unk18)();
@@ -131,9 +131,9 @@ void func_00000EA0();
 void func_00000E5C();
 int func_00000EC0(struct drv_pif *drv);
 int func_00000F44(struct drv_pif *drv);
-void func_000015FC(struct drv_pif *drv, int a2, int a3);
-void func_00001378(struct drv_pif *drv, int *a2, int a3, int a4);
+void func_00001378(struct drv_pif *drv, u_int *a2, int a3, int a4);
 void func_00001588(struct drv_pif *drv);
+void func_000015FC(struct drv_pif *drv, u_int *a2, int a3);
 int func_00001820();
 int func_0000183C();
 
@@ -311,7 +311,7 @@ func_00000410(void *context, int c)
 int
 func_000004C4(int func, struct drv_pif *drv, int a2, int a3)
 {
-	if ((drv->unk4 & 0x200) && func != 6) {
+	if ((drv->debug & 0x200) && func != 6) {
 		sceDeci2ExPanic("pif func %s flag=%x\n", drp_if_func_name[func], drv->flag);
 	}
 
@@ -356,7 +356,7 @@ func_00000608(struct drv_pif *drv)
 	drv->flag |= 0x2000;
 
 	if (drv->hdr.len == 0) {
-		if (drv->unk4 & 0x100) {
+		if (drv->debug & 0x100) {
 			sceDeci2ExPanic("pif new rcv packet found flag = %x\n", drv->flag);
 		}
 
@@ -369,7 +369,7 @@ func_00000608(struct drv_pif *drv)
 			func_00001588(drv);
 		}
 	} else {
-		if (drv->unk4 & 0x200) {
+		if (drv->debug & 0x200) {
 			sceDeci2ExPanic("pif  rcv packet continus flag = %x\n", drv->flag);
 		}
 	}
@@ -396,7 +396,7 @@ func_00000708(struct drv_pif *drv)
 
 		if ((drv->flag & 0x10) == 0) {
 			if ((drv->flag & 0x21) == 0x21) {
-				if (drv->unk4 & 0x200) {
+				if (drv->debug & 0x200) {
 					sceDeci2ExPanic("pif report_events IFM_OUT\n");
 				}
 
@@ -439,7 +439,7 @@ int
 func_000008C4(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag |= 0x100;
-	if (drv->unk4 & 0x100) {
+	if (drv->debug & 0x100) {
 		sceDeci2ExPanic("\tpif receive start\n");
 	}
 
@@ -454,7 +454,7 @@ func_00000904(struct drv_pif *drv, int a2, int a3)
 
 	if (pif->unk18) {
 		unk = drv->hdr.len - drv->unk24;
-		if (drv->unk4 & 0x200) {
+		if (drv->debug & 0x200) {
 			sceDeci2ExPanic("\tpif RxCounter is non zero full size read %d byte\n", unk);
 		}
 	} else {
@@ -462,7 +462,7 @@ func_00000904(struct drv_pif *drv, int a2, int a3)
 		unk2 = drv->hdr.len - drv->unk24;
 
 		unk = min(unk, unk2);
-		if (drv->unk4 & 0x200) {
+		if (drv->debug & 0x200) {
 			sceDeci2ExPanic("\tpif RxCounter is zero .. can read %d byte\n", unk);
 		}
 	}
@@ -486,7 +486,7 @@ func_00000904(struct drv_pif *drv, int a2, int a3)
 		drv->flag |= 0x4000;
 	}
 
-	if (drv->unk4 & 0x200) {
+	if (drv->debug & 0x200) {
 		sceDeci2ExPanic("\tpif read %d byte, %d/%d in packet\n", a3, drv->unk24, drv->hdr.len);
 	}
 
@@ -499,7 +499,7 @@ func_00000A84(struct drv_pif *drv, int a2, int a3)
 	volatile struct pif_reg *pif = PIFREG;
 
 	pif->unk18 = 1;
-	if (drv->unk4 & 0x100) {
+	if (drv->debug & 0x100) {
 		sceDeci2ExPanic("\tpif RxCounter Dec\n");
 	}
 
@@ -520,7 +520,7 @@ func_00000B0C(struct drv_pif *drv, int a2, int a3)
 	drv->flag |= 0x1;
 	func_00000568(drv, 0x1000);
 
-	if (drv->unk4 & 0x100) {
+	if (drv->debug & 0x100) {
 		sceDeci2ExPanic("\tpif send start flag = %x\n", drv->flag);
 	}
 
@@ -550,7 +550,7 @@ func_00000BEC(struct drv_pif *drv, int a2, int a3)
 	volatile struct pif_reg *pif = PIFREG;
 
 	pif->unk14 = 1;
-	if (drv->unk4 & 0x100) {
+	if (drv->debug & 0x100) {
 		sceDeci2ExPanic("\tpif TxCounter inc\n");
 	}
 
@@ -577,7 +577,7 @@ func_00000CC8(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag |= 0x1000;
 
-	if (drv->unk4 & 0x200) {
+	if (drv->debug & 0x200) {
 		sceDeci2ExPanic("\tpif rcv off flag = %x\n", drv->flag);
 	}
 
@@ -591,7 +591,7 @@ func_00000D10(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag &= ~0x1000;
 
-	if (drv->unk4 & 0x200) {
+	if (drv->debug & 0x200) {
 		sceDeci2ExPanic("\tpif rcv on flag = %x\n", drv->flag);
 	}
 
@@ -607,7 +607,7 @@ func_00000D7C(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag |= 0x10;
 
-	if (drv->unk4 & 0x200) {
+	if (drv->debug & 0x200) {
 		sceDeci2ExPanic("\tpif send off flag = %x\n", drv->flag);
 	}
 
@@ -619,7 +619,7 @@ func_00000DBC(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag &= ~0x10;
 
-	if (drv->unk4 & 0x200) {
+	if (drv->debug & 0x200) {
 		sceDeci2ExPanic("\tpif send on flag = %x\n", drv->flag);
 	}
 
@@ -633,7 +633,7 @@ func_00000DBC(struct drv_pif *drv, int a2, int a3)
 int
 func_00000E28(struct drv_pif *drv, int a1, int a2)
 {
-	drv->unk4 = a1;
+	drv->debug = a1;
 }
 
 int
@@ -736,34 +736,36 @@ func_00000F44(struct drv_pif *drv)
 }
 
 void
-func_00000FC4(struct drv_pif *drv, int a2, int a3, int a4)
+func_00000FC4(struct drv_pif *drv, u_int madr, int size, int a4)
 {
 	volatile struct pif_reg *pif = PIFREG;
 	u_short unk;
 	u_int chcr;
 
-	if (!a3) {
+	if (!size) {
 		return;
 	}
 
-	*D5_MADR = a2;
+	*D5_MADR = madr;
 	*D_PCR |= 0x800000;
 	pif->unk38 = drv->unkE;
 
 	unk = 0x8004;
 	chcr = 0x1000200;
 
-	if (a3 % drv->unkD) {
-		*D5_BCRW = a3;
+	if (size % drv->unkD) {
+		*D5_BCRW = size;
 		*D5_BCRN = 1;
 		pif->unk3C = 1;
 	} else {
 		*D5_BCRW = drv->unkD;
-		pif->unk3C = a3 / drv->unkD;
+		pif->unk3C = size / drv->unkD;
 		*D5_BCRN = pif->unk3C;
 	}
 
 	if (a4) {
+		/* Supposedly chcr bit 30 is bus snooping enable?
+		   But why not enabled in the device to ram case? */
 		chcr |= 0x40000000;
 	}
 
@@ -788,30 +790,30 @@ func_00000FC4(struct drv_pif *drv, int a2, int a3, int a4)
 }
 
 void
-func_000011A4(struct drv_pif *drv, int a2, int a3)
+func_000011A4(struct drv_pif *drv, u_int madr, int size)
 {
 	volatile struct pif_reg *pif = PIFREG;
 	u_short unk;
 	u_int chcr;
 
-	if (!a3) {
+	if (!size) {
 		return;
 	}
 
-	*D5_MADR = a2;
+	*D5_MADR = madr;
 	*D_PCR |= 0x800000;
 	pif->unk38 = drv->unkE;
 
 	unk = 0x8004;
 	chcr = 0x1000201;
 
-	if (a3 % drv->unkD) {
-		*D5_BCRW = a3;
+	if (size % drv->unkD) {
+		*D5_BCRW = size;
 		*D5_BCRN = 1;
 		pif->unk3C = 1;
 	} else {
 		*D5_BCRW = drv->unkD;
-		pif->unk3C = a3 / drv->unkD;
+		pif->unk3C = size / drv->unkD;
 		*D5_BCRN = pif->unk3C;
 	}
 
@@ -835,7 +837,60 @@ func_000011A4(struct drv_pif *drv, int a2, int a3)
 		;
 }
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_00001378);
+void
+func_00001378(struct drv_pif *drv, u_int *dst, int wcount, int a4)
+{
+	u_int *p = dst;
+	int size = wcount;
+	int i;
+	volatile struct pif_reg *pif = PIFREG;
+
+	if (wcount < drv->unkF || !(pifdrv.unkC & 1) || *D_DMACEN == 0) {
+		while (size-- > 0) {
+			*p++ = pif->unk40;
+		}
+	} else {
+		if (wcount > 0) {
+			if (drv->debug & 0x21c) {
+				sceDeci2ExPanic("\tfifo_read via dma\n");
+			}
+
+			size = wcount % drv->unkD;
+			if (!size) {
+				size = drv->unkD;
+			}
+
+			func_00000FC4(drv, (u_int)dst, size, 1);
+			if (size < wcount) {
+				func_00000FC4(drv, (u_int)(dst + size), wcount - size, 1);
+			}
+		}
+	}
+
+	if ((drv->debug & 0x21c) != 0) {
+		sceDeci2ExPanic("\tfifo_read %d words  ", wcount);
+		if (drv->debug & 0x1c) {
+			size = wcount;
+
+			if ((drv->debug & 0x10) == 0) {
+				if (drv->debug & 8) {
+					size = min(16, wcount);
+				} else {
+					size = min(4, wcount);
+				}
+			}
+
+			for (i = 0; i < size; i++) {
+				sceDeci2ExPanic(" %08x", dst[i]);
+			}
+
+			if (i < wcount) {
+				sceDeci2ExPanic("...");
+			}
+		}
+		sceDeci2ExPanic("\n");
+	}
+}
 
 /* Completely drain FIFO? */
 void
@@ -853,10 +908,56 @@ func_00001588(struct drv_pif *drv)
 	}
 }
 
-INCLUDE_RODATA("asm/deci2drp/nonmatchings/deci2drp", D_00001BF4);
+void
+func_000015FC(struct drv_pif *drv, u_int *src, int wcount)
+{
+	volatile struct pif_reg *pif = PIFREG;
+	u_int *p = src;
+	int size = wcount;
+	int i;
 
-INCLUDE_RODATA("asm/deci2drp/nonmatchings/deci2drp", D_00001BFC);
+	if (wcount < drv->unkF || (u_int)src > 0xffffff || !(pifdrv.unkC & 1) || *D_DMACEN == 0) {
+		while (size-- > 0) {
+			pif->unk40 = *p++;
+		}
+	} else {
+		if (wcount > 0) {
+			if (drv->debug & 0x21c) {
+				sceDeci2ExPanic("\tfifo_write via dma\n");
+			}
 
-INCLUDE_RODATA("asm/deci2drp/nonmatchings/deci2drp", D_00001C00);
+			size = wcount % drv->unkD;
+			if (!size) {
+				size = drv->unkD;
+			}
 
-INCLUDE_ASM("asm/deci2drp/nonmatchings/deci2drp", func_000015FC);
+			func_000011A4(drv, (u_int)src, size);
+			if (size < wcount) {
+				func_000011A4(drv, (u_int)(src + size), wcount - size);
+			}
+		}
+	}
+
+	if ((drv->debug & 0x21c) != 0) {
+		sceDeci2ExPanic("\tfifo_write %d words  ", wcount);
+		if (drv->debug & 0x1c) {
+			size = wcount;
+
+			if ((drv->debug & 0x10) == 0) {
+				if (drv->debug & 8) {
+					size = min(16, wcount);
+				} else {
+					size = min(4, wcount);
+				}
+			}
+
+			for (i = 0; i < size; i++) {
+				sceDeci2ExPanic(" %08x", src[i]);
+			}
+			if (i < wcount) {
+				sceDeci2ExPanic("...");
+			}
+		}
+		sceDeci2ExPanic("\n");
+	}
+}
