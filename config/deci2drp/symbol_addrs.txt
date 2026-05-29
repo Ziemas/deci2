@@ -1,4 +1,24 @@
 start = 0x0; // type:func
+drp_rcv_start = 0x8c4; // type:func
+drp_rcv_read = 0x904; // type:func
+drp_rcv_end = 0xa84; // type:func
+drp_send_start = 0xb0c; // type:func
+drp_send_write = 0xb6c; // type:func
+drp_send_end = 0xbec; // type:func
+drp_poll = 0xc58; // type:func
+drp_rcv_off = 0xcc8; // type:func
+drp_rcv_on = 0xd10; // type:func
+drp_send_off = 0xd7c; // type:func
+drp_send_on = 0xdbc; // type:func
+drp_debug = 0xe28; // type:func
+drp_shutdown = 0xe30; // type:func
+
+drp_dma_read = 0xfc4; // type:func
+drp_dma_write = 0x11a4; // type:func
+drp_fifo_read = 0x1378; // type:func
+drp_fifo_clear = 0x1588; // type:func
+drp_fifo_write = 0x15fc; // type:func
+
 drp_if_func= 0x1c48; // size:0x30
 drp_if_func_name = 0x1c7c; // size:0x30
 memset = 0x1884; // type:func

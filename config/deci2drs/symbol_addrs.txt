@@ -6,6 +6,21 @@ QueryBootMode = 0xfb4; // type:func
 
 memset = 0xfd8; // type:func
 
+drs_rcv_start = 0x68c; // type:func
+drs_rcv_read = 0x6cc; // type:func
+drs_rcv_end = 0x79c; // type:func
+drs_send_start = 0x7e0; // type:func
+drs_send_write = 0x828; // type:func
+drs_send_end = 0x940; // type:func
+drs_poll_2 = 0x984; // type:func
+drs_poll_1 = 0xb80; // type:func
+drs_rcv_off = 0xcac; // type:func
+drs_rcv_on = 0xcec; // type:func
+drs_send_off = 0xd58; // type:func
+drs_send_on = 0xd98; // type:func
+drs_debug = 0xe04; // type:func
+drs_shutdown = 0xe0c; // type:func
+
 EnableIntr = 0xffc; // type:func
 DisableDispatchIntr = 0x1004; // type:func
 
