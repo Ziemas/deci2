@@ -11,6 +11,15 @@
 
 ModuleInfo Module = { "Deci2_PIF_interface_driver", 0x101 };
 
+#define I_STAT 0xbf801070
+#define IRQ_CTRL 0xbf801450
+
+#define D5_MADR 0xBF8010D0
+#define D5_BCR 0xBF8010D4
+#define D5_CHCR 0xBF8010D8
+
+#define D_PCR 0xBF8010F0
+
 #define max(X, Y) ((X) > (Y) ? (X) : (Y))
 #define min(X, Y) ((X) < (Y) ? (X) : (Y))
 
@@ -196,7 +205,7 @@ start()
 	}
 
 	sceDeci2DbgPrintStatus(func_00000410, &pifdrv);
-	if (prid < 16 || (read32(0xbf801450) & 8) != 0) {
+	if (prid < 16 || (read32(IRQ_CTRL) & 8) != 0) {
 		pifdrv.irq_num = 10;
 		pifdrv.unk18 = func_0000183C;
 
@@ -563,7 +572,7 @@ int
 func_00000C58(struct drv_pif *drv, int a2, int a3)
 {
 	if (drv->unk18()) {
-		write32(0xbf801070, ~(1 << drv->irq_num));
+		write32(I_STAT, ~(1 << drv->irq_num));
 		func_00000568(drv, 512);
 		func_00000608(drv);
 	}
@@ -746,21 +755,21 @@ func_00000FC4(struct drv_pif *drv, int a2, int a3, int a4)
 		return;
 	}
 
-	write32(0xbf8010d0, a2);
-	write32(0xbf8010f0, read32(0xbf8010f0) | 0x800000);
+	write32(D5_MADR, a2);
+	write32(D_PCR, read32(D_PCR) | 0x800000);
 	pif->unk38 = drv->unkE;
 
 	unk = 0x8004;
 	chcr = 0x1000200;
 
 	if (a3 % drv->unkD) {
-		write16(0xbf8010d4, a3);
-		write16(0xbf8010d6, 1);
+		write16(D5_BCR, a3);
+		write16(D5_BCR + 2, 1);
 		pif->unk3C = 1;
 	} else {
-		write16(0xbf8010d4, drv->unkD);
+		write16(D5_BCR, drv->unkD);
 		pif->unk3C = a3 / drv->unkD;
-		write16(0xbf8010d6, pif->unk3C);
+		write16(D5_BCR + 2, pif->unk3C);
 	}
 
 	if (a4) {
@@ -780,10 +789,10 @@ func_00000FC4(struct drv_pif *drv, int a2, int a3, int a4)
 		}
 	}
 
-	write32(0xbf8010d8, chcr);
+	write32(D5_CHCR, chcr);
 	pif->unk34 = unk;
 
-	while ((read32(0xbf8010d8) & 0x1000000))
+	while ((read32(D5_CHCR) & 0x1000000))
 		;
 }
 
@@ -798,21 +807,21 @@ func_000011A4(struct drv_pif *drv, int a2, int a3)
 		return;
 	}
 
-	write32(0xbf8010d0, a2);
-	write32(0xbf8010f0, read32(0xbf8010f0) | 0x800000);
+	write32(D5_MADR, a2);
+	write32(D_PCR, read32(D_PCR) | 0x800000);
 	pif->unk38 = drv->unkE;
 
 	unk = 0x8004;
 	chcr = 0x1000201;
 
 	if (a3 % drv->unkD) {
-		write16(0xbf8010d4, a3);
-		write16(0xbf8010d6, 1);
+		write16(D5_BCR, a3);
+		write16(D5_BCR + 2, 1);
 		pif->unk3C = 1;
 	} else {
-		write16(0xbf8010d4, drv->unkD);
+		write16(D5_BCR, drv->unkD);
 		pif->unk3C = a3 / drv->unkD;
-		write16(0xbf8010d6, pif->unk3C);
+		write16(D5_BCR + 2, pif->unk3C);
 	}
 
 	if (drv->unkC & 2) {
@@ -828,10 +837,10 @@ func_000011A4(struct drv_pif *drv, int a2, int a3)
 		}
 	}
 
-	write32(0xbf8010d8, chcr);
+	write32(D5_CHCR, chcr);
 	pif->unk34 = unk;
 
-	while ((read32(0xbf8010d8) & 0x1000000))
+	while ((read32(D5_CHCR) & 0x1000000))
 		;
 }
 
