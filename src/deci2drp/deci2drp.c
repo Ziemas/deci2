@@ -11,20 +11,23 @@
 
 ModuleInfo Module = { "Deci2_PIF_interface_driver", 0x101 };
 
-#define I_STAT 0xbf801070
-#define IRQ_CTRL 0xbf801450
-
-#define D5_MADR 0xBF8010D0
-#define D5_BCR 0xBF8010D4
-#define D5_CHCR 0xBF8010D8
-
-#define D_PCR 0xBF8010F0
+// clang-format off
+#define I_STAT     ((volatile u_int   *)(0xBF801070))
+#define IRQ_CTRL   ((volatile u_int   *)(0xBF801450))
+#define R_BF80101C ((volatile u_int   *)(0xBF80101C))
+#define D5_MADR    ((volatile u_int   *)(0xBF8010D0))
+#define D5_BCRW    ((volatile u_short *)(0xBF8010D4))
+#define D5_BCRN    ((volatile u_short *)(0xBF8010D6))
+#define D5_CHCR    ((volatile u_int   *)(0xBF8010D8))
+#define D_PCR      ((volatile u_int   *)(0xBF8010F0))
+#define R_BF803100 ((volatile u_char  *)(0xBF803100))
+#define R_BF803200 ((volatile u_char  *)(0xBF803200))
+// clang-format on
 
 #define max(X, Y) ((X) > (Y) ? (X) : (Y))
 #define min(X, Y) ((X) < (Y) ? (X) : (Y))
 
 #define PIFREG ((volatile struct pif_reg *)0xbf803800)
-#define UNKHW ((volatile struct pif_reg *)0xbf803200)
 
 struct pif_reg {
 	u_short board_id;
@@ -755,21 +758,21 @@ func_00000FC4(struct drv_pif *drv, int a2, int a3, int a4)
 		return;
 	}
 
-	write32(D5_MADR, a2);
-	write32(D_PCR, read32(D_PCR) | 0x800000);
+	*D5_MADR = a2;
+	*D_PCR |= 0x800000;
 	pif->unk38 = drv->unkE;
 
 	unk = 0x8004;
 	chcr = 0x1000200;
 
 	if (a3 % drv->unkD) {
-		write16(D5_BCR, a3);
-		write16(D5_BCR + 2, 1);
+		*D5_BCRW = a3;
+		*D5_BCRN = 1;
 		pif->unk3C = 1;
 	} else {
-		write16(D5_BCR, drv->unkD);
+		*D5_BCRW = drv->unkD;
 		pif->unk3C = a3 / drv->unkD;
-		write16(D5_BCR + 2, pif->unk3C);
+		*D5_BCRN = pif->unk3C;
 	}
 
 	if (a4) {
@@ -777,22 +780,22 @@ func_00000FC4(struct drv_pif *drv, int a2, int a3, int a4)
 	}
 
 	if (drv->unkC & 2) {
-		write32(0xbf80101c, read32(0xbf80101c) | 0x40000000);
+		*R_BF80101C |= 0x40000000;
 		unk |= 2;
 		if ((drv->unkC & 4)) {
-			write8(0xbf803200, read8(0xbf803200) | 8);
+			*R_BF803200 |= 8;
 		}
 	} else {
-		write32(0xbf80101c, read32(0xbf80101c) & ~0x40000000);
+		*R_BF80101C &= ~0x40000000;
 		if ((drv->unkC & 4)) {
-			write8(0xbf803200, read8(0xbf803200) & ~8);
+			*R_BF803200 &= ~8;
 		}
 	}
 
-	write32(D5_CHCR, chcr);
+	*D5_CHCR = chcr;
 	pif->unk34 = unk;
 
-	while ((read32(D5_CHCR) & 0x1000000))
+	while (*D5_CHCR & 0x1000000)
 		;
 }
 
@@ -807,40 +810,40 @@ func_000011A4(struct drv_pif *drv, int a2, int a3)
 		return;
 	}
 
-	write32(D5_MADR, a2);
-	write32(D_PCR, read32(D_PCR) | 0x800000);
+	*D5_MADR = a2;
+	*D_PCR |= 0x800000;
 	pif->unk38 = drv->unkE;
 
 	unk = 0x8004;
 	chcr = 0x1000201;
 
 	if (a3 % drv->unkD) {
-		write16(D5_BCR, a3);
-		write16(D5_BCR + 2, 1);
+		*D5_BCRW = a3;
+		*D5_BCRN = 1;
 		pif->unk3C = 1;
 	} else {
-		write16(D5_BCR, drv->unkD);
+		*D5_BCRW = drv->unkD;
 		pif->unk3C = a3 / drv->unkD;
-		write16(D5_BCR + 2, pif->unk3C);
+		*D5_BCRN = pif->unk3C;
 	}
 
 	if (drv->unkC & 2) {
-		write32(0xbf80101c, read32(0xbf80101c) | 0x40000000);
+		*R_BF80101C |= 0x40000000;
 		unk |= 2;
 		if ((drv->unkC & 4)) {
-			write8(0xbf803200, read8(0xbf803200) | 8);
+			*R_BF803200 |= 8;
 		}
 	} else {
-		write32(0xbf80101c, read32(0xbf80101c) & ~0x40000000);
+		*R_BF80101C &= ~0x40000000;
 		if ((drv->unkC & 4)) {
-			write8(0xbf803200, read8(0xbf803200) & ~8);
+			*R_BF803200 &= ~8;
 		}
 	}
 
-	write32(D5_CHCR, chcr);
+	*D5_CHCR = chcr;
 	pif->unk34 = unk;
 
-	while ((read32(D5_CHCR) & 0x1000000))
+	while (*D5_CHCR & 0x1000000)
 		;
 }
 
