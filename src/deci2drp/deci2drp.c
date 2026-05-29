@@ -74,34 +74,34 @@ struct drv_pif {
 
 struct drv_pif pifdrv;
 
-int func_000008C4(struct drv_pif *drv, int, int);
-int func_00000904(struct drv_pif *drv, int, int);
-int func_00000A84(struct drv_pif *drv, int, int);
-int func_00000B0C(struct drv_pif *drv, int, int);
-int func_00000B6C(struct drv_pif *drv, int, int);
-int func_00000BEC(struct drv_pif *drv, int, int);
-int func_00000C58(struct drv_pif *drv, int, int);
-int func_00000CC8(struct drv_pif *drv, int, int);
-int func_00000D10(struct drv_pif *drv, int, int);
-int func_00000D7C(struct drv_pif *drv, int, int);
-int func_00000DBC(struct drv_pif *drv, int, int);
-int func_00000E28(struct drv_pif *drv, int, int);
-int func_00000E30(struct drv_pif *drv, int, int);
+int drp_rcv_start(struct drv_pif *drv, int, int);
+int drp_rcv_read(struct drv_pif *drv, int, int);
+int drp_rcv_end(struct drv_pif *drv, int, int);
+int drp_send_start(struct drv_pif *drv, int, int);
+int drp_send_write(struct drv_pif *drv, int, int);
+int drp_send_end(struct drv_pif *drv, int, int);
+int drp_poll(struct drv_pif *drv, int, int);
+int drp_rcv_off(struct drv_pif *drv, int, int);
+int drp_rcv_on(struct drv_pif *drv, int, int);
+int drp_send_off(struct drv_pif *drv, int, int);
+int drp_send_on(struct drv_pif *drv, int, int);
+int drp_debug(struct drv_pif *drv, int, int);
+int drp_shutdown(struct drv_pif *drv, int, int);
 
 int (*drp_if_func[])(struct drv_pif *drv, int arg1, int arg2) = {
-	func_000008C4,
-	func_00000904,
-	func_00000A84,
-	func_00000B0C,
-	func_00000B6C,
-	func_00000BEC,
-	func_00000C58,
-	func_00000CC8,
-	func_00000D10,
-	func_00000D7C,
-	func_00000DBC,
-	func_00000E28,
-	func_00000E30,
+	drp_rcv_start,
+	drp_rcv_read,
+	drp_rcv_end,
+	drp_send_start,
+	drp_send_write,
+	drp_send_end,
+	drp_poll,
+	drp_rcv_off,
+	drp_rcv_on,
+	drp_send_off,
+	drp_send_on,
+	drp_debug,
+	drp_shutdown,
 };
 
 const char *drp_if_func_name[] = {
@@ -436,7 +436,7 @@ func_00000708(struct drv_pif *drv)
 }
 
 int
-func_000008C4(struct drv_pif *drv, int a2, int a3)
+drp_rcv_start(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag |= 0x100;
 	if (drv->debug & 0x100) {
@@ -447,7 +447,7 @@ func_000008C4(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000904(struct drv_pif *drv, int a2, int a3)
+drp_rcv_read(struct drv_pif *drv, int a2, int a3)
 {
 	volatile struct pif_reg *pif = PIFREG;
 	int unk, unk2;
@@ -494,7 +494,7 @@ func_00000904(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000A84(struct drv_pif *drv, int a2, int a3)
+drp_rcv_end(struct drv_pif *drv, int a2, int a3)
 {
 	volatile struct pif_reg *pif = PIFREG;
 
@@ -515,7 +515,7 @@ func_00000A84(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000B0C(struct drv_pif *drv, int a2, int a3)
+drp_send_start(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag |= 0x1;
 	func_00000568(drv, 0x1000);
@@ -528,7 +528,7 @@ func_00000B0C(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000B6C(struct drv_pif *drv, int a2, int a3)
+drp_send_write(struct drv_pif *drv, int a2, int a3)
 {
 	int unk;
 
@@ -537,7 +537,7 @@ func_00000B6C(struct drv_pif *drv, int a2, int a3)
 
 	if (a3 > 0) {
 		drv->unk2C = a3;
-		func_000015FC(drv, a2, ((u_int)a3 + 3) >> 2);
+		func_000015FC(drv, (u_int *)a2, ((u_int)a3 + 3) >> 2);
 		drv->flag |= 0x40;
 	}
 
@@ -545,7 +545,7 @@ func_00000B6C(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000BEC(struct drv_pif *drv, int a2, int a3)
+drp_send_end(struct drv_pif *drv, int a2, int a3)
 {
 	volatile struct pif_reg *pif = PIFREG;
 
@@ -560,7 +560,7 @@ func_00000BEC(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000C58(struct drv_pif *drv, int a2, int a3)
+drp_poll(struct drv_pif *drv, int a2, int a3)
 {
 	if (drv->unk18()) {
 		write32(I_STAT, ~(1 << drv->irq_num));
@@ -573,7 +573,7 @@ func_00000C58(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000CC8(struct drv_pif *drv, int a2, int a3)
+drp_rcv_off(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag |= 0x1000;
 
@@ -587,7 +587,7 @@ func_00000CC8(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000D10(struct drv_pif *drv, int a2, int a3)
+drp_rcv_on(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag &= ~0x1000;
 
@@ -603,7 +603,7 @@ func_00000D10(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000D7C(struct drv_pif *drv, int a2, int a3)
+drp_send_off(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag |= 0x10;
 
@@ -615,7 +615,7 @@ func_00000D7C(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000DBC(struct drv_pif *drv, int a2, int a3)
+drp_send_on(struct drv_pif *drv, int a2, int a3)
 {
 	drv->flag &= ~0x10;
 
@@ -631,13 +631,13 @@ func_00000DBC(struct drv_pif *drv, int a2, int a3)
 }
 
 int
-func_00000E28(struct drv_pif *drv, int a1, int a2)
+drp_debug(struct drv_pif *drv, int a1, int a2)
 {
 	drv->debug = a1;
 }
 
 int
-func_00000E30(struct drv_pif *drv, int a1, int a2)
+drp_shutdown(struct drv_pif *drv, int a1, int a2)
 {
 }
 
