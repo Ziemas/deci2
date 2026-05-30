@@ -20,7 +20,7 @@ ModuleInfo Module = { "Deci2_SIF2_interface_driver", 0x103 };
 struct drv_sif {
 	struct deci2_iface *iface;
 	int flag;
-	int unk8;
+	int debug;
 	int unkC; // current protocol
 	int unk10;
 	int unk14; // current transfer size
@@ -118,7 +118,7 @@ start(int a0)
 int
 func_000000DC(int func, struct drv_sif *drv, int a2, int a3)
 {
-	if ((drv->unk8 & 0x800) && func != 6) {
+	if ((drv->debug & 0x800) && func != 6) {
 		sceDeci2ExPanic("\t\tsif2 func %s flag = %x\n", drs_if_func_name[func], sifdrv.flag);
 	}
 
@@ -132,7 +132,7 @@ func_00000184(struct drv_sif *drv)
 	int spec, size;
 
 	msflag = sceSifGetMSflg();
-	if ((drv->unk8 & 0x800) && (msflag & 0xc0000000)) {
+	if ((drv->debug & 0x800) && (msflag & 0xc0000000)) {
 		sceDeci2ExPanic("\t\tsif2 read msflag for rcv %x\n", msflag);
 	}
 
@@ -151,7 +151,7 @@ func_00000184(struct drv_sif *drv)
 		 * int proto : 16
 		 */
 
-		if ((drv->unk8 & 0x800)) {
+		if ((drv->debug & 0x800)) {
 			sceDeci2ExPanic("\t\tsif2 read spec %x and DECI2_ACCEPT\n", D_A00003E0);
 		}
 
@@ -196,14 +196,14 @@ func_000002B4(struct drv_sif *drv)
 	u_int msflag;
 
 	msflag = sceSifGetMSflg();
-	if ((drv->unk8 & 0x800) && (msflag & 0xc0000000)) {
+	if ((drv->debug & 0x800) && (msflag & 0xc0000000)) {
 		sceDeci2ExPanic("\t\tsif2 read msflag for send %x\n", msflag);
 	}
 
 	if (!(drv->flag & 0x202) && (msflag & 0x40000000)) {
 		drv->flag |= 2;
 		sceSifSetMSflg(0x40000000);
-		if ((drv->unk8 & 0x800)) {
+		if ((drv->debug & 0x800)) {
 			sceDeci2ExPanic("\t\tsif2 send dma start addr=%x, size=%x\n", drv->unk30, drv->unk2C);
 		}
 		EnableIntr(34);
@@ -216,7 +216,7 @@ func_00000384(struct drv_sif *drv)
 {
 	int msflag;
 
-	if (drv->unk8 & 0xc00) {
+	if (drv->debug & 0xc00) {
 		msflag = sceSifGetMSflg();
 		if (drv->flag & 2 && msflag & 0x40000000) {
 			sceDeci2ExPanic("\t\tSIF2 SENDING unexpected DECI2_ACCEPT !\n");
@@ -228,14 +228,14 @@ void
 func_000003F4(struct drv_sif *drv)
 {
 	if (drv->flag & 2) {
-		if (drv->unk8 & 0x800) {
+		if (drv->debug & 0x800) {
 			sceDeci2ExPanic("\t\tsif2 send dma end %08x %08x %08x %08x ...\n",
 			  ((uint *)drv->unk30)[0], ((uint *)drv->unk30)[1], ((uint *)drv->unk30)[2],
 			  ((uint *)drv->unk30)[3]);
 		}
 		drv->flag = (drv->flag & ~0x2) | 0x40;
 	} else if (drv->flag & 0x200) {
-		if (drv->unk8 & 0x81c) {
+		if (drv->debug & 0x81c) {
 			sceDeci2ExPanic("\t\tsif2 rcv dma end %08x %08x %08x %08x ...\n",
 			  ((uint *)drv->unk20)[0], ((uint *)drv->unk20)[1], ((uint *)drv->unk20)[2],
 			  ((uint *)drv->unk20)[3]);
@@ -303,8 +303,7 @@ int
 drs_rcv_start(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag |= 0x100;
-
-	if (drv->unk8 & 0x400) {
+	if (drv->debug & 0x400) {
 		sceDeci2ExPanic("\t\tsif2 packet receive start flag = %x\n", drv->flag);
 	}
 
@@ -332,7 +331,7 @@ drs_rcv_read(struct drv_sif *drv, int arg1, int arg2)
 		return size;
 	}
 
-	if (drv->unk8 & 0x800) {
+	if (drv->debug & 0x800) {
 		sceDeci2ExPanic("\t\tsif2 rcv dma start %d byte\n", size);
 	}
 
@@ -349,7 +348,7 @@ drs_rcv_end(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag &= ~0x100;
 
-	if (drv->unk8 & 0x400) {
+	if (drv->debug & 0x400) {
 		sceDeci2ExPanic("\t\tsif2 packet receive end flag = %x\n", drv->flag);
 	}
 
@@ -362,7 +361,7 @@ drs_send_start(struct drv_sif *drv, int a2, int a3)
 	drv->flag |= 0x25;
 	drv->unk24 = a2;
 	drv->unk28 = a3;
-	if (drv->unk8 & 0x400) {
+	if (drv->debug & 0x400) {
 		sceDeci2ExPanic("\t\tsif2 packet send start flag = %x\n", drv->flag);
 	}
 
@@ -396,7 +395,7 @@ drs_send_write(struct drv_sif *drv, int arg1, int arg2)
 		s0 |= 0x8000;
 	}
 
-	if (drv->unk8 & 0x800) {
+	if (drv->debug & 0x800) {
 		sceDeci2ExPanic("\t\tsif2 write spec %x and DECI2_START\n", s0);
 	}
 
@@ -414,7 +413,7 @@ drs_send_end(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag &= ~0x21;
 
-	if (drv->unk8 & 0x400) {
+	if (drv->debug & 0x400) {
 		sceDeci2ExPanic("\t\tsif2 packet send end  flag = %x\n", drv->flag);
 	}
 
@@ -499,7 +498,7 @@ drs_rcv_off(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag |= 0x1000;
 
-	if (drv->unk8 & 0x800) {
+	if (drv->debug & 0x800) {
 		sceDeci2ExPanic("\t\t\tsif2 rcv off flag = %x\n", drv->flag);
 	}
 
@@ -511,7 +510,7 @@ drs_rcv_on(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag &= ~0x1000;
 
-	if (drv->unk8 & 0x800) {
+	if (drv->debug & 0x800) {
 		sceDeci2ExPanic("\t\t\tsif2 rcv on flag = %x\n", drv->flag);
 	}
 
@@ -527,7 +526,7 @@ drs_send_off(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag |= 0x10;
 
-	if (drv->unk8 & 0x800) {
+	if (drv->debug & 0x800) {
 		sceDeci2ExPanic("\t\t\tsif2 send off flag = %x\n", drv->flag);
 	}
 
@@ -539,7 +538,7 @@ drs_send_on(struct drv_sif *drv, int arg1, int arg2)
 {
 	drv->flag &= ~0x10;
 
-	if (drv->unk8 & 0x800) {
+	if (drv->debug & 0x800) {
 		sceDeci2ExPanic("\t\t\tsif2 send on flag = %x\n", drv->flag);
 	}
 
@@ -553,7 +552,7 @@ drs_send_on(struct drv_sif *drv, int arg1, int arg2)
 int
 drs_debug(struct drv_sif *drv, int arg1, int arg2)
 {
-	drv->unk8 = arg1;
+	drv->debug = arg1;
 	// BUG: missing return
 }
 
