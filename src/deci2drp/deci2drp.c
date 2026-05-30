@@ -18,39 +18,39 @@ ModuleInfo Module = { "Deci2_PIF_interface_driver", 0x101 };
 #define PIFREG ((volatile struct pif_reg *)0xbf803800)
 
 struct pif_reg {
-	u_short board_id;
-	u_short unk2;
-	u_short unk4;
-	u_short unk6;
-	u_short unk8;
-	u_short unkA;
-	u_short unkC;
-	u_short unkE;
-	u_short unk10;
-	u_short unk12;
-	u_short unk14;
-	u_short unk16;
-	u_short unk18;
-	u_short unk1A;
-	u_short unk1C;
-	u_short unk1E;
-	u_short unk20;
-	u_short unk22;
-	u_short unk24;
-	u_short unk26;
-	u_short unk28;
-	u_short unk2A;
-	u_short unk2C;
-	u_short unk2E;
-	u_short unk30;
-	u_short unk32;
-	u_short unk34;
-	u_short unk36;
-	u_short unk38;
-	u_short unk3A;
-	u_short unk3C;
-	u_short unk3E;
-	u_int unk40;
+	/* 0x00 */ u_short board_id;
+	/* 0x02 */ u_short unk2;
+	/* 0x04 */ u_short rcv_state;
+	/* 0x06 */ u_short unk6;
+	/* 0x08 */ u_short cpr;
+	/* 0x0a */ u_short unkA;
+	/* 0x0c */ u_short com_send;
+	/* 0x0e */ u_short unkE;
+	/* 0x10 */ u_short fifo_stat;
+	/* 0x12 */ u_short unk12;
+	/* 0x14 */ u_short tx_count;
+	/* 0x16 */ u_short unk16;
+	/* 0x18 */ u_short rx_count;
+	/* 0x1a */ u_short unk1A;
+	/* 0x1c */ u_short unk1C;
+	/* 0x1e */ u_short unk1E;
+	/* 0x20 */ u_short unk20;
+	/* 0x22 */ u_short unk22;
+	/* 0x24 */ u_short unk24;
+	/* 0x26 */ u_short unk26;
+	/* 0x28 */ u_short unk28;
+	/* 0x2a */ u_short unk2A;
+	/* 0x2c */ u_short unk2C;
+	/* 0x2e */ u_short unk2E;
+	/* 0x30 */ u_short unk30;
+	/* 0x32 */ u_short unk32;
+	/* 0x34 */ u_short dmactrl;
+	/* 0x36 */ u_short unk36;
+	/* 0x38 */ u_short unk38;
+	/* 0x3a */ u_short unk3A;
+	/* 0x3c */ u_short dma_slice_count;
+	/* 0x3e */ u_short unk3E;
+	/* 0x40 */ u_int fifo;
 };
 
 struct drv_pif {
@@ -163,7 +163,7 @@ start()
 	unk = 0;
 
 	v4 = PIFREG->board_id;
-	if ((v4 == 0x4126 || v4 == 0x4127) && (PIFREG->unk4 & 0x100) == 0) {
+	if ((v4 == 0x4126 || v4 == 0x4127) && (PIFREG->rcv_state & 0x100) == 0) {
 		PIFREG->board_id = 0;
 		v4 = PIFREG->board_id;
 		if (v4 == 0x4126 || v4 == 0x4127) {
@@ -240,7 +240,7 @@ func_000002E8(struct drv_pif *drv)
 	SetTimerMode(timer, 0);
 	SetTimerCompare(timer, 0);
 
-	pif->unkC = 0x1300;
+	pif->com_send = 0x1300;
 	pif->unk30 = 4;
 	i = 0;
 
@@ -250,7 +250,7 @@ func_000002E8(struct drv_pif *drv)
 				i++;
 				SetTimerCounter(timer, 0);
 				if (i > 100) {
-					pif->unkC = 0;
+					pif->com_send = 0;
 					FreeHardTimer(timer);
 					return 1;
 				}
@@ -265,7 +265,7 @@ func_000002E8(struct drv_pif *drv)
 	if (pif->unk20 & 4) {
 		pif->unk2C = 4;
 
-		if ((pif->unk8 & 0xf00) == 0xf00) {
+		if ((pif->cpr & 0xf00) == 0xf00) {
 			FreeHardTimer(timer);
 			return 0;
 		}
@@ -303,7 +303,7 @@ func_00000410(void *context, int c)
 	}
 
 	PIFREG->unk2C = 2;
-	PIFREG->unkC = c & 0xff;
+	PIFREG->com_send = c & 0xff;
 	PIFREG->unk30 = 1;
 	drv->flag |= 0x80000000;
 }
@@ -328,9 +328,9 @@ func_00000568(struct drv_pif *drv, int a2)
 	}
 
 	if (a2 == 0x1000) {
-		a2 = ((pif->unk10 >> 12) ^ 1) & 1;
+		a2 = ((pif->fifo_stat >> 12) ^ 1) & 1;
 	} else if (a2 == 0x200) {
-		a2 = pif->unk10 & 0x200;
+		a2 = pif->fifo_stat & 0x200;
 	} else {
 		a2 = -1;
 	}
@@ -348,7 +348,7 @@ func_00000608(struct drv_pif *drv)
 {
 	volatile struct pif_reg *pif = PIFREG;
 
-	if (!pif->unk18 && (pif->unk10 & 8) == 0) {
+	if (!pif->rx_count && (pif->fifo_stat & 8) == 0) {
 		return;
 	}
 
@@ -419,7 +419,7 @@ func_00000708(struct drv_pif *drv)
 			if (drv->flag & 0x2000) {
 				drv->flag &= ~0x2000;
 
-				if (PIFREG->unk18) {
+				if (PIFREG->rx_count) {
 					unk = drv->hdr.len;
 				} else {
 					unk = func_00000F44(drv);
@@ -452,7 +452,7 @@ drp_rcv_read(struct drv_pif *drv, int a2, int a3)
 	volatile struct pif_reg *pif = PIFREG;
 	int unk, unk2;
 
-	if (pif->unk18) {
+	if (pif->rx_count) {
 		unk = drv->hdr.len - drv->unk24;
 		if (drv->debug & 0x200) {
 			sceDeci2ExPanic("\tpif RxCounter is non zero full size read %d byte\n", unk);
@@ -498,7 +498,7 @@ drp_rcv_end(struct drv_pif *drv, int a2, int a3)
 {
 	volatile struct pif_reg *pif = PIFREG;
 
-	pif->unk18 = 1;
+	pif->rx_count = 1;
 	if (drv->debug & 0x100) {
 		sceDeci2ExPanic("\tpif RxCounter Dec\n");
 	}
@@ -549,7 +549,7 @@ drp_send_end(struct drv_pif *drv, int a2, int a3)
 {
 	volatile struct pif_reg *pif = PIFREG;
 
-	pif->unk14 = 1;
+	pif->tx_count = 1;
 	if (drv->debug & 0x100) {
 		sceDeci2ExPanic("\tpif TxCounter inc\n");
 	}
@@ -681,7 +681,7 @@ int
 func_00000EC0(struct drv_pif *drv)
 {
 	volatile struct pif_reg *pif = PIFREG;
-	int unk = pif->unk10 ^ 0x1c03;
+	int unk = pif->fifo_stat ^ 0x1c03;
 
 	if (unk & 0x100) {
 		return 0x4000;
@@ -710,7 +710,7 @@ int
 func_00000F44(struct drv_pif *drv)
 {
 	volatile struct pif_reg *pif = PIFREG;
-	int unk = pif->unk10 ^ 0x1c03;
+	int unk = pif->fifo_stat ^ 0x1c03;
 
 	if (unk & 0x10) {
 		return 0x4000;
@@ -756,11 +756,11 @@ drp_dma_read(struct drv_pif *drv, u_int madr, int size, int a4)
 	if (size % drv->dma_chunk_size) {
 		*D5_BCRW = size;
 		*D5_BCRN = 1;
-		pif->unk3C = 1;
+		pif->dma_slice_count = 1;
 	} else {
 		*D5_BCRW = drv->dma_chunk_size;
-		pif->unk3C = size / drv->dma_chunk_size;
-		*D5_BCRN = pif->unk3C;
+		pif->dma_slice_count = size / drv->dma_chunk_size;
+		*D5_BCRN = pif->dma_slice_count;
 	}
 
 	if (a4) {
@@ -783,7 +783,7 @@ drp_dma_read(struct drv_pif *drv, u_int madr, int size, int a4)
 	}
 
 	*D5_CHCR = chcr;
-	pif->unk34 = unk;
+	pif->dmactrl = unk;
 
 	while (*D5_CHCR & 0x1000000)
 		;
@@ -810,11 +810,11 @@ drp_dma_write(struct drv_pif *drv, u_int madr, int size)
 	if (size % drv->dma_chunk_size) {
 		*D5_BCRW = size;
 		*D5_BCRN = 1;
-		pif->unk3C = 1;
+		pif->dma_slice_count = 1;
 	} else {
 		*D5_BCRW = drv->dma_chunk_size;
-		pif->unk3C = size / drv->dma_chunk_size;
-		*D5_BCRN = pif->unk3C;
+		pif->dma_slice_count = size / drv->dma_chunk_size;
+		*D5_BCRN = pif->dma_slice_count;
 	}
 
 	if (drv->unkC & 2) {
@@ -831,7 +831,7 @@ drp_dma_write(struct drv_pif *drv, u_int madr, int size)
 	}
 
 	*D5_CHCR = chcr;
-	pif->unk34 = unk;
+	pif->dmactrl = unk;
 
 	while (*D5_CHCR & 0x1000000)
 		;
@@ -847,7 +847,7 @@ drp_fifo_read(struct drv_pif *drv, u_int *dst, int wcount, int a4)
 
 	if (wcount < drv->dma_min_size || !(pifdrv.unkC & 1) || *D_DMACEN == 0) {
 		while (size-- > 0) {
-			*p++ = pif->unk40;
+			*p++ = pif->fifo;
 		}
 	} else {
 		if (wcount > 0) {
@@ -899,12 +899,12 @@ drp_fifo_clear(struct drv_pif *drv)
 	volatile struct pif_reg *pif = PIFREG;
 	volatile u_int sp0; // needs volatile to make a stack frame...
 
-	while (!(pif->unk10 & 1)) {
-		sp0 = pif->unk40;
+	while (!(pif->fifo_stat & 1)) {
+		sp0 = pif->fifo;
 	}
 
-	while (pif->unk18 != 0) {
-		PIFREG->unk18 = 1;
+	while (pif->rx_count != 0) {
+		PIFREG->rx_count = 1;
 	}
 }
 
@@ -916,9 +916,10 @@ drp_fifo_write(struct drv_pif *drv, u_int *src, int wcount)
 	int size = wcount;
 	int i;
 
-	if (wcount < drv->dma_min_size || (u_int)src > 0xffffff || !(pifdrv.unkC & 1) || *D_DMACEN == 0) {
+	if (wcount < drv->dma_min_size || (u_int)src > 0xffffff || !(pifdrv.unkC & 1) ||
+	  *D_DMACEN == 0) {
 		while (size-- > 0) {
-			pif->unk40 = *p++;
+			pif->fifo = *p++;
 		}
 	} else {
 		if (wcount > 0) {
