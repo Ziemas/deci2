@@ -764,8 +764,7 @@ drp_dma_read(struct drv_pif *drv, u_int madr, int size, int a4)
 	}
 
 	if (a4) {
-		/* Supposedly chcr bit 30 is bus snooping enable?
-		   But why not enabled in the device to ram case? */
+		/* Supposedly chcr bit 30 is bus snooping enable? */
 		chcr |= 0x40000000;
 	}
 
