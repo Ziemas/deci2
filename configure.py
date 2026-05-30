@@ -366,8 +366,11 @@ def fix_compile_commands():
             entry["command"] += " -w"
             entry["command"] += " -m32"
 
+        # Idk why it's not automatically setting the language defines
+        if file_path.suffix == ".c":
+            entry["command"] += " -D__LANGUAGE_C"
         if file_path.suffix == ".cpp":
-            entry["command"] += " -std=c++98"
+            entry["command"] += " -std=c++98 -D__LANGUAGE_CPP"
 
         if file_path.suffix == ".s":
             data.remove(entry)

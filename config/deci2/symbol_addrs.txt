@@ -25,6 +25,9 @@ sceDeci2IfEventHandler = 0x14E4; // type:func
 sceDeci2ExPoll = 0x27f4; // type:func
 sceDeci2Poll = 0x28d0; // type:func
 
+deci2api_stub = 0x3680;
+deci2log_stub = 0x3720;
+
 QueryMemSize = 0x58f4; // type:func
 KprintfSet = 0x58fc; // type:func
 FlushIcache = 0x5920; // type:func
@@ -49,3 +52,7 @@ GetSystemStatusFlag = 0x5a3c; // type:func
 SetEventFlag = 0x5a60; // type:func
 iSetEventFlag = 0x5a68; // type:func
 iSignalSema = 0x5a8c; // type:func
+
+d2m = 0x6700; // size:0x608
+unk66F0 = 0x66f0; // size:0x8
+unk6D10 = 0x6d10; // size:0x8048
