@@ -3,40 +3,47 @@
 #include "introld.h"
 #include "loadcore.h"
 #include "loadcore_internal.h"
+#include "sysclib_internal.h"
+#include "sysmem_internal.h"
 #include "thread_internal.h"
 
 #include <deci2.h>
 #include <intrman.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
 #include <thread.h>
 
 ModuleInfo Module = { "Deci2_Manager", 0x105 };
 
-struct d2_unk_28 {
-	/* 0x000 */ void (*unk0)();
-	/* 0x004 */ char *unk4;
-	/* 0x008 */ u_int unk8;
-	/* 0x008 */ u_int unkC;
+#define MAX_SOCK 35
+
+struct deci2_socket {
+	/* 0x000 */ void (*handler)();
+	/* 0x004 */ void *opt;
+	/* 0x008 */ u_int proto;
+	/* 0x00c */ u_int unkC;
 	/* 0x010 */ char unk10[0x18];
 };
 
-struct d2_iface {
+struct deci2_iface {
 	/* 0x0 */ int unk0;
 	/* 0x0 */ int (*unk4)();
 	/* 0x8 */ void *unk8;
 	/* 0xc */ char unkC[0x24];
 };
 
-struct d2_mgr {
+struct deci2_manager {
 	/* 0x000 */ int unk0;
 	/* 0x004 */ int unk4;
 	/* 0x008 */ int unk8;
 	/* 0x00c */ int unkC;
-	/* 0x010 */ char unk10[0x18];
-	/* 0x028 */ struct d2_unk_28 unk28[2];
-	/* 0x07c */ char unk7C[0x528];
-	/* 0x6a0 */ struct d2_iface iface[2];
+	/* 0x010 */ void (*dbg_print_fn)(void *, int);
+	/* 0x014 */ void *dgb_print_opt;
+	/* 0x018 */ char unk18[0xc];
+	/* 0x024 */ int isdbgp_sock;
+	/* 0x028 */ struct deci2_socket sock[MAX_SOCK];
+	/* 0x6a0 */ struct deci2_iface iface[2];
 	/* 0x600 */ struct stru_66F0 *unk600;
 	/* 0x604 */ u_int unk604;
 };
@@ -50,7 +57,7 @@ struct stru_66F0 {
 	/* 0x0 */ char unk0[0x8];
 };
 
-/* 0x6700 */ struct d2_mgr d2m;
+/* 0x6700 */ struct deci2_manager d2m;
 /* 0x66f0 */ struct stru_66F0 unk66F0;
 /* 0x6d10 */ struct stru_6D10 unk6D10[2];
 //* 0x6d10 */ char unk6D10[0x8048];
@@ -65,6 +72,7 @@ void func_00002A40();
 int func_00003760(); // should be in sdb header
 int func_000001F4(void *opt);
 int func_00000240(void *opt);
+void func_00002C08(int a1, u_short proto);
 
 #if 1
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", start);
@@ -95,14 +103,14 @@ start()
 	}
 
 	CpuSuspendIntr(&oldstat);
-	d2m.unk28[0].unk8 = 1;
-	d2m.unk28[0].unk0 = func_00002A68;
-	d2m.unk28[0].unk4 = NULL;
+	d2m.sock[0].proto = 1;
+	d2m.sock[0].handler = func_00002A68;
+	d2m.sock[0].opt = NULL;
 	for (i = 1; i < 2; i++) {
-		d2m.unk28[i].unk8 = -1;
-		d2m.unk28[i].unk0 = func_00001BA0;
-		d2m.unk28[i].unk4 = (void *)&unk6D10[i];
-		d2m.unk28[i].unkC = 1;
+		d2m.sock[i].proto = -1;
+		d2m.sock[i].handler = func_00001BA0;
+		d2m.sock[i].opt = (void *)&unk6D10[i];
+		d2m.sock[i].unkC = 1;
 		unk6D10[i].unk0 = i;
 	}
 
@@ -140,7 +148,7 @@ int
 func_00000240(void *opt)
 {
 
-	struct d2_mgr *d2 = opt;
+	struct deci2_manager *d2 = opt;
 
 	CpuEnableIntr();
 	if (!d2->unk0) {
@@ -157,7 +165,7 @@ func_00000240(void *opt)
 int
 sceDeci2Shutdown()
 {
-	struct d2_iface *iface;
+	struct deci2_iface *iface;
 	int oldstat;
 	int i;
 
@@ -174,7 +182,7 @@ sceDeci2Shutdown()
 	return 0;
 }
 
-struct d2_mgr *
+struct deci2_manager *
 sceDeci2GetStatus()
 {
 	return &d2m;
@@ -192,17 +200,65 @@ sceDeci2SetDebugFlags(u_int flags)
 	d2m.unkC = flags;
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00000360);
+int
+func_00000360(u_short proto, void *opt, void (*handler)(int event, int param, void *opt))
+{
+	int *bootmode;
+	int i;
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00000524);
+	if (proto == 0 || proto >= 0xf000) {
+		return -1;
+	}
+
+	for (i = 0; i < MAX_SOCK; i++) {
+		if (d2m.sock[i].proto == proto) {
+			return -3;
+		}
+	}
+
+	bootmode = QueryBootMode(4);
+
+	for (i = 0; i < MAX_SOCK; i++) {
+		if (d2m.sock[i].handler == NULL) {
+			memset(&d2m.sock[i], 0, sizeof(d2m.sock[i]));
+
+			d2m.sock[i].proto = proto;
+			d2m.sock[i].handler = handler;
+			d2m.sock[i].opt = opt;
+
+			if (bootmode && *(u_short *)bootmode == 0) {
+				if (proto <= DECI2_PROTO_I0TTYP || proto >= DECI2_PROTO_I0TTYP + 9 || d2m.unkC) {
+					sceDeci2ExPanic(" socket %2d proto=0x%x handler=0x%x opt=0x%x\n", i, proto,
+					  handler, opt);
+				}
+			}
+
+			if (proto == DECI2_PROTO_ISDBGP) {
+				d2m.isdbgp_sock = i;
+			}
+
+			if (d2m.unk8) {
+				func_00002C08(1, proto);
+			}
+
+			return i;
+		}
+	}
+
+	return -4;
+}
+
+int
+sceDeci2Open(u_short proto, void *opt, void (*handler)(int event, int param, void *opt))
+{
+	return CpuInvokeInKmode(func_00000360, proto, opt, handler);
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00000558);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2Close);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExRecv);
-
-INCLUDE_RODATA("asm/deci2/nonmatchings/deci2", D_00005AB0);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExReqSend);
 
@@ -220,11 +276,50 @@ INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExRecvUnSuspend);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExPanic);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00000DA4);
+int
+func_00000DA4(void *opt, const char *fmt, va_list ap)
+{
+	struct deci2_manager *d2 = opt;
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00000DE8);
+	if (d2m.dbg_print_fn && fmt) {
+		prnt(d2->dbg_print_fn, d2->dgb_print_opt, fmt, ap);
+	}
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2DbgPrintStatus);
+	return 0;
+}
+
+int
+func_00000DE8(void *opt, const char *fmt, va_list ap)
+{
+	return CpuInvokeInKmode(func_00000DA4, opt, fmt, ap);
+}
+
+void
+sceDeci2DbgPrintStatus(void (*fn)(void *, int), void *opt)
+{
+	int *bootmode, i;
+
+	d2m.dbg_print_fn = fn;
+	d2m.dgb_print_opt = opt;
+	KprintfSet(func_00000DE8, &d2m);
+
+	bootmode = QueryBootMode(4);
+	if (!bootmode || *(u_short *)bootmode) {
+		return;
+	}
+
+	sceDeci2ExPanic("\n\nDECI2 start d2manCB = 0x%x debugflag = 0x%x intrhandlers = 0x%x \n", &d2m,
+	  &d2m.unkC, &unk66F0);
+
+	for (i = 0; i < MAX_SOCK; i++) {
+		if (d2m.sock[i].handler) {
+			sceDeci2ExPanic(" socket %2d proto=0x%x handler=0x%x opt=0x%x\n", i, d2m.sock[i].proto,
+			  d2m.sock[i].handler, d2m.sock[i].opt);
+		}
+	}
+
+	sceDeci2ExPanic("\r");
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2SetPollCallback);
 
