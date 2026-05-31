@@ -1,4 +1,5 @@
 #include "common.h"
+#include "deci2_internal.h"
 #include "intrman_internal.h"
 #include "introld.h"
 #include "loadcore.h"
@@ -23,14 +24,12 @@ struct deci2_socket {
 	/* 0x004 */ void *opt;
 	/* 0x008 */ u_int proto;
 	/* 0x00c */ u_int unkC;
-	/* 0x010 */ char unk10[0x18];
-};
-
-struct deci2_iface {
-	/* 0x0 */ int unk0;
-	/* 0x0 */ int (*unk4)();
-	/* 0x8 */ void *unk8;
-	/* 0xc */ char unkC[0x24];
+	/* 0x010 */ u_int unk10;
+	/* 0x014 */ u_int unk14;
+	/* 0x018 */ u_int unk18;
+	/* 0x01c */ u_int unk1C;
+	/* 0x020 */ u_int unk20;
+	/* 0x024 */ struct deci2_iface *iface;
 };
 
 struct deci2_manager {
@@ -39,13 +38,13 @@ struct deci2_manager {
 	/* 0x008 */ int unk8;
 	/* 0x00c */ int unkC;
 	/* 0x010 */ void (*dbg_print_fn)(void *, int);
-	/* 0x014 */ void *dgb_print_opt;
+	/* 0x014 */ void *dbg_print_opt;
 	/* 0x018 */ char unk18[0xc];
 	/* 0x024 */ int isdbgp_sock;
 	/* 0x028 */ struct deci2_socket sock[MAX_SOCK];
 	/* 0x6a0 */ struct deci2_iface iface[2];
 	/* 0x600 */ struct stru_66F0 *unk600;
-	/* 0x604 */ u_int unk604;
+	/* 0x604 */ int (*unk604)()
 };
 
 struct stru_6D10 {
@@ -72,6 +71,7 @@ void func_00002A40();
 int func_00003760(); // should be in sdb header
 int func_000001F4(void *opt);
 int func_00000240(void *opt);
+int func_00002A0C(int s);
 void func_00002C08(int a1, u_short proto);
 
 #if 1
@@ -174,8 +174,8 @@ sceDeci2Shutdown()
 	for (i = 0; i < 2; i++) {
 		iface = &d2m.iface[i];
 
-		if (d2m.iface[i].unk4)
-			iface->unk4(12, iface->unk8, 0, 0);
+		if (d2m.iface[i].handler)
+			iface->handler(12, iface->opt, 0, 0);
 	}
 
 	CpuResumeIntr(oldstat);
@@ -189,9 +189,9 @@ sceDeci2GetStatus()
 }
 
 void
-sceDeci2SetDebugFormatRoutine(u_int a1)
+sceDeci2SetDebugFormatRoutine(int (*fn)(const char *, va_list))
 {
-	d2m.unk604 = a1;
+	d2m.unk604 = fn;
 }
 
 void
@@ -254,11 +254,69 @@ sceDeci2Open(u_short proto, void *opt, void (*handler)(int event, int param, voi
 	return CpuInvokeInKmode(func_00000360, proto, opt, handler);
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00000558);
+int
+func_00000558(int s)
+{
+	if (!func_00002A0C(s) || s < 3) {
+		return -2;
+	}
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2Close);
+	if (!d2m.sock[s].handler) {
+		return -2;
+	}
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExRecv);
+	d2m.sock[s].proto = -1;
+
+	while (d2m.sock[s].iface || d2m.sock[s].unk20) {
+		sceDeci2ExPoll();
+	}
+
+	if (d2m.sock[s].proto == DECI2_PROTO_ISDBGP) {
+		d2m.isdbgp_sock = 0;
+	}
+
+	memset(&d2m.sock[s], 0, sizeof(d2m.sock[s]));
+	return 1;
+}
+
+int
+sceDeci2Close(int s)
+{
+	return CpuInvokeInKmode(func_00000558, s);
+}
+
+int
+sceDeci2ExRecv(int s, void *buf, u_short len)
+{
+	struct deci2_iface *iface;
+
+	if (!func_00002A0C(s)) {
+		return -2;
+	}
+
+	iface = d2m.sock[s].iface;
+	if (!iface) {
+		return -7;
+	}
+
+	if (!(iface->unk1C & 4)) {
+		return -7;
+	}
+
+	if ((u_int)buf & 3) {
+		return -5;
+	}
+
+	if (!iface->unk24) {
+		if (len < 8) {
+			return -6;
+		}
+
+		iface->unk2C = buf;
+	}
+
+	return iface->handler(1, iface->opt, buf, len);
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExReqSend);
 
@@ -274,7 +332,23 @@ INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExRecvSuspend);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExRecvUnSuspend);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExPanic);
+int
+sceDeci2ExPanic(const char *fmt, ...)
+{
+	va_list va;
+
+	if (d2m.dbg_print_fn) {
+		va_start(va, fmt);
+
+		if (d2m.unk604) {
+			return d2m.unk604(d2m.dbg_print_fn, d2m.dbg_print_opt, fmt, va);
+		}
+
+		return prnt(d2m.dbg_print_fn, d2m.dbg_print_opt, fmt, va);
+	}
+
+	return 0;
+}
 
 int
 func_00000DA4(void *opt, const char *fmt, va_list ap)
@@ -282,7 +356,7 @@ func_00000DA4(void *opt, const char *fmt, va_list ap)
 	struct deci2_manager *d2 = opt;
 
 	if (d2m.dbg_print_fn && fmt) {
-		prnt(d2->dbg_print_fn, d2->dgb_print_opt, fmt, ap);
+		prnt(d2->dbg_print_fn, d2->dbg_print_opt, fmt, ap);
 	}
 
 	return 0;
@@ -300,7 +374,7 @@ sceDeci2DbgPrintStatus(void (*fn)(void *, int), void *opt)
 	int *bootmode, i;
 
 	d2m.dbg_print_fn = fn;
-	d2m.dgb_print_opt = opt;
+	d2m.dbg_print_opt = opt;
 	KprintfSet(func_00000DE8, &d2m);
 
 	bootmode = QueryBootMode(4);
