@@ -8,17 +8,17 @@ func_00000F50:
     ## Check IRQ bits
     li  $v1, (1 << 1)           # SBUS IRQ
     and $v0, $at, $v1
-    bne $zero, $v0, ret
+    bne $zero, $v0, 1f
 
     li  $v1, (1 << 3)           # DMA IRQ
     and $v0, $at, $v1
-    beq $zero, $2, ret
+    beq $zero, $v0, 1f
 
     la  $v0, 0xbf8010f4         # DMA_DICR
     lw  $v0, 0($v0)
     li  $v1, (1 << 26)
     and $v0, $v1
 
-ret:
+1:
     jr $ra
 	.set pop

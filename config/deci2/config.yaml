@@ -21,6 +21,7 @@ options:
     migrate_rodata_to_functions: True
     named_regs_for_c_funcs: False
     make_full_disasm_for_code: True
+    hasm_in_src_path: True
 
     gp_value: 0xe6e0
 
@@ -44,7 +45,7 @@ segments:
         - [0x3680, asm, export_stub]
         - [0x3760, c, sdb]
 
-        - [0x4ef0, asm, exc] 
+        - [0x4ef0, hasm, exc]
         - [0x58e0, asm, ilb_stub]
         - [0x5aa0, .rodata, deci2]
         - [0x62c0, .rodata, sdb]
