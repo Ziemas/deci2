@@ -44,12 +44,11 @@ struct deci2_manager {
 	/* 0x028 */ struct deci2_socket sock[MAX_SOCK];
 	/* 0x6a0 */ struct deci2_iface iface[2];
 	/* 0x600 */ struct stru_66F0 *unk600;
-	/* 0x604 */ int (*unk604)()
+	/* 0x604 */ int (*unk604)();
 };
 
 struct stru_6D10 {
-	/* 0x0 */ int unk0;
-	/* 0x4 */ char unk4[0x4020];
+	/* 0x0 */ int unk0[0x1009];
 };
 
 struct stru_66F0 {
@@ -59,7 +58,6 @@ struct stru_66F0 {
 /* 0x6700 */ struct deci2_manager d2m;
 /* 0x66f0 */ struct stru_66F0 unk66F0;
 /* 0x6d10 */ struct stru_6D10 unk6D10[2];
-//* 0x6d10 */ char unk6D10[0x8048];
 
 extern libhead deci2api_stub;
 extern libhead deci2log_stub;
@@ -74,9 +72,6 @@ int func_00000240(void *opt);
 int func_00002A0C(int s);
 void func_00002C08(int a1, u_short proto);
 
-#if 1
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", start);
-#else
 int
 start()
 {
@@ -106,12 +101,13 @@ start()
 	d2m.sock[0].proto = 1;
 	d2m.sock[0].handler = func_00002A68;
 	d2m.sock[0].opt = NULL;
-	for (i = 1; i < 2; i++) {
-		d2m.sock[i].proto = -1;
-		d2m.sock[i].handler = func_00001BA0;
-		d2m.sock[i].opt = (void *)&unk6D10[i];
-		d2m.sock[i].unkC = 1;
-		unk6D10[i].unk0 = i;
+	for (i = 0; i < 2; i++) {
+		d2m.sock[i + 1].proto = -1;
+		d2m.sock[i + 1].handler = func_00001BA0;
+		d2m.sock[i + 1].opt = (void *)&unk6D10[i];
+		d2m.sock[i + 1].unkC = 1;
+
+		unk6D10[i].unk0[1] = i + 1;
 	}
 
 	bm[0] = 0x10002;
@@ -128,7 +124,6 @@ start()
 	SetEventFlag(GetSystemStatusFlag(), 0x20);
 	return 0;
 }
-#endif
 
 int
 func_000001F4(void *opt)
