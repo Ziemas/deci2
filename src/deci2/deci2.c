@@ -39,7 +39,7 @@ struct deci2_manager {
 	/* 0x00c */ int unkC;
 	/* 0x010 */ void (*dbg_print_fn)(void *, int);
 	/* 0x014 */ void *dbg_print_opt;
-	/* 0x018 */ int unk18;
+	/* 0x018 */ int (*unk18)();
 	/* 0x01C */ struct deci2_iface *unk1C;
 	/* 0x020 */ int unk20;
 	/* 0x024 */ int isdbgp_sock;
@@ -588,7 +588,14 @@ sceDeci2DbgPrintStatus(void (*fn)(void *, int), void *opt)
 	sceDeci2ExPanic("\r");
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2SetPollCallback);
+int (*sceDeci2SetPollCallback(int (*cb)()))()
+{
+	void *ret = d2m.unk18;
+
+	d2m.unk18 = cb;
+
+	return ret;
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExWakeupThread);
 
