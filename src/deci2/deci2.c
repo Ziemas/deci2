@@ -781,7 +781,18 @@ func_00001364(struct if_param *ifp)
 	return NULL;
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2IfCreate);
+struct deci2_iface *
+sceDeci2IfCreate(short node, void *opt, int (*handler)(), int (*interrupt)())
+{
+	struct if_param ifp;
+
+	ifp.node = node;
+	ifp.opt = opt;
+	ifp.handler = handler;
+	ifp.interrupt = interrupt;
+
+	return (struct deci2_iface *)CpuInvokeInKmode(func_00001364, &ifp);
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2IfEventHandler);
 
