@@ -457,7 +457,26 @@ sceDeci2ExLock(int s)
 	return DECI2_ERR_INVALSOCK;
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExUnLock);
+int
+sceDeci2ExUnLock(int s)
+{
+	if (!d2m.unk0) {
+		return DECI2_ERR_NOTLOCKED;
+	}
+
+	if (!func_00002A0C(s) || s <= 2) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (d2m.unk4 & 1) {
+		func_00002C08(2, 0);
+	}
+
+	d2m.unk0 = 0;
+	d2m.unk4 &= ~1;
+	func_0000231C();
+	return 1;
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExRecvSuspend);
 
