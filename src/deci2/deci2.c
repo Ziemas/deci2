@@ -25,7 +25,7 @@ struct deci2_socket {
 	/* 0x008 */ u_int proto;
 	/* 0x00c */ u_int unkC;
 	/* 0x010 */ u_int unk10;
-	/* 0x014 */ u_int unk14;
+	/* 0x014 */ int unk14;
 	/* 0x018 */ u_int unk18;
 	/* 0x01c */ u_int unk1C;
 	/* 0x020 */ struct deci2_iface *unk20;
@@ -672,7 +672,6 @@ sceDeci2ExSignalSema(int s, int semid)
 	return 1;
 }
 
-
 int
 sceDeci2ExSetEventFlag(int s, int evfid, unsigned long bitpattern)
 {
@@ -710,8 +709,38 @@ sceDeci2ExSetEventFlag(int s, int evfid, unsigned long bitpattern)
 
 #endif
 
-// sw irq handler
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_0000121C);
+int
+func_0000121C(void *arg)
+{
+	struct deci2_manager *d2 = arg;
+	int i, j;
+
+	d2->unk4 &= ~2;
+
+	for (i = 0; i < MAX_SOCK; i++) {
+		if (d2->sock[i].handler && d2->sock[i].unk14 > 0) {
+			switch (d2->sock[i].unk14) {
+			case 1:
+				for (j = 0; j < d2->sock[i].unk1C; j++) {
+					iWakeupThread(d2->sock[i].unk18);
+				}
+				break;
+			case 2:
+				for (j = 0; j < d2->sock[i].unk1C; j++) {
+					iSignalSema(d2->sock[i].unk18);
+				}
+				break;
+			case 3:
+				iSetEventFlag(d2->sock[i].unk18, d2->sock[i].unk1C);
+				break;
+			}
+
+			d2->sock[i].unk14 = 0;
+		}
+	}
+
+	return 0;
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00001364);
 
