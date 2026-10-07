@@ -478,9 +478,52 @@ sceDeci2ExUnLock(int s)
 	return 1;
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExRecvSuspend);
+int
+sceDeci2ExRecvSuspend(int s)
+{
+	struct deci2_socket *sock;
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExRecvUnSuspend);
+	sock = &d2m.sock[s];
+
+	if (!func_00002A0C(s)) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (s <= 2) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (sock->unk24) {
+		sock->unk24->handler(7, sock->unk24->opt, 0, 0);
+		return 1;
+	}
+
+	return DECI2_ERR_INVALSOCK;
+}
+
+int
+sceDeci2ExRecvUnSuspend(int s)
+{
+	struct deci2_socket *sock;
+
+	sock = &d2m.sock[s];
+
+	if (!func_00002A0C(s)) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (s <= 2) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (sock->unk24) {
+		sock->unk24->unk1C |= 2;
+		sock->unk24->handler(8, sock->unk24->opt, 0, 0);
+		return 1;
+	}
+
+	return DECI2_ERR_INVALSOCK;
+}
 
 int
 sceDeci2ExPanic(const char *fmt, ...)
