@@ -72,6 +72,8 @@ int func_00003760(); // should be in sdb header
 int func_000001F4(void *opt);
 int func_00000240(void *opt);
 void func_0000231C();
+void func_00002904();
+void func_00002914();
 int func_00002A0C(int s);
 void func_00002C08(int a1, u_short proto);
 
@@ -377,7 +379,26 @@ sceDeci2ExReqSend(int s, char dest)
 	return 1;
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ReqSend);
+int
+sceDeci2ReqSend(int s, char dest)
+{
+	int ret;
+
+	if (!func_00002A0C(s) || s < 3) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	ret = CpuInvokeInKmode(sceDeci2ExReqSend, s, dest);
+	if (ret == 1) {
+		CpuInvokeInKmode(func_00002914);
+	}
+
+	if (d2m.unk4 & 2) {
+		func_00002904();
+	}
+
+	return ret;
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExSend);
 
