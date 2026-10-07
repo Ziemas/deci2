@@ -28,8 +28,8 @@ struct deci2_socket {
 	/* 0x014 */ u_int unk14;
 	/* 0x018 */ u_int unk18;
 	/* 0x01c */ u_int unk1C;
-	/* 0x020 */ u_int unk20;
-	/* 0x024 */ struct deci2_iface *iface;
+	/* 0x020 */ struct deci2_iface *unk20;
+	/* 0x024 */ struct deci2_iface *unk24;
 };
 
 struct deci2_manager {
@@ -39,7 +39,9 @@ struct deci2_manager {
 	/* 0x00c */ int unkC;
 	/* 0x010 */ void (*dbg_print_fn)(void *, int);
 	/* 0x014 */ void *dbg_print_opt;
-	/* 0x018 */ char unk18[0xc];
+	/* 0x018 */ int unk18;
+	/* 0x01C */ struct deci2_iface *unk1C;
+	/* 0x020 */ int unk20;
 	/* 0x024 */ int isdbgp_sock;
 	/* 0x028 */ struct deci2_socket sock[MAX_SOCK];
 	/* 0x6a0 */ struct deci2_iface iface[2];
@@ -69,6 +71,7 @@ void func_00002A40();
 int func_00003760(); // should be in sdb header
 int func_000001F4(void *opt);
 int func_00000240(void *opt);
+void func_0000231C();
 int func_00002A0C(int s);
 void func_00002C08(int a1, u_short proto);
 
@@ -262,7 +265,7 @@ func_00000558(int s)
 
 	d2m.sock[s].proto = -1;
 
-	while (d2m.sock[s].iface || d2m.sock[s].unk20) {
+	while (d2m.sock[s].unk24 || d2m.sock[s].unk20) {
 		sceDeci2ExPoll();
 	}
 
@@ -289,7 +292,7 @@ sceDeci2ExRecv(int s, void *buf, u_short len)
 		return -2;
 	}
 
-	iface = d2m.sock[s].iface;
+	iface = d2m.sock[s].unk24;
 	if (!iface) {
 		return -7;
 	}
@@ -313,7 +316,66 @@ sceDeci2ExRecv(int s, void *buf, u_short len)
 	return iface->handler(1, iface->opt, buf, len);
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExReqSend);
+int
+sceDeci2ExReqSend(int s, char dest)
+{
+	struct deci2_socket *sock;
+	struct deci2_iface *iface;
+	int i;
+
+	if (!func_00002A0C(s)) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	sock = &d2m.sock[s];
+
+	if (sock->unk20) {
+		return DECI2_ERR_WOULDBLOCK;
+	}
+
+	if (dest == 'H') {
+		if (!d2m.unk1C) {
+			if (!d2m.unk20) {
+				return DECI2_ERR_NOHOSTIF;
+			}
+
+			return DECI2_ERR_NOROUTE;
+		}
+
+		if (d2m.unkC & 2) {
+			sceDeci2ExPanic("socket=%d point to if=%d (host route)\n", sock - d2m.sock,
+			  d2m.unk1C - d2m.iface);
+		}
+
+		sock->unk20 = d2m.unk1C;
+		sock->unk10 = 'H';
+		func_0000231C();
+		return 1;
+	}
+
+	iface = d2m.iface;
+	for (i = 0; i < 2; i++) {
+		if (iface->node == dest) {
+			if (!(iface->unkC & 1)) {
+				return DECI2_ERR_NOROUTE;
+			}
+
+			if (d2m.unkC & 2) {
+				sceDeci2ExPanic("socket=%d point to if=%d\n", sock - d2m.sock, iface - d2m.iface);
+			}
+
+			sock->unk20 = iface;
+			sock->unk10 = dest;
+			func_0000231C();
+			return 1;
+		}
+
+		iface++;
+	}
+
+	func_0000231C();
+	return 1;
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ReqSend);
 
