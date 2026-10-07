@@ -438,7 +438,24 @@ sceDeci2ExSend(int s, void *buf, unsigned short len)
 	return iface->handler(4, iface->opt, buf, len);
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExLock);
+int
+sceDeci2ExLock(int s)
+{
+	if (d2m.unk0) {
+		return DECI2_ERR_ALREADYLOCK;
+	}
+
+	if (!func_00002A0C(s)) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (s > 2) {
+		d2m.unk0 = s;
+		return 1;
+	}
+
+	return DECI2_ERR_INVALSOCK;
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExUnLock);
 
