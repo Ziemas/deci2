@@ -597,12 +597,120 @@ int (*sceDeci2SetPollCallback(int (*cb)()))()
 	return ret;
 }
 
+#if 1
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExWakeupThread);
-
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExSignalSema);
-
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExSetEventFlag);
+#else
+int
+sceDeci2ExWakeupThread(int s, int thid)
+{
+	struct deci2_socket *sock;
+	struct deci2_socket *dbg_sock;
 
+	int unk;
+
+	sock = &d2m.sock[s];
+
+	if (!func_00002A0C(s)) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (sock->unk14 == 1 && sock->unk18 == thid) {
+		sock->unk1C++;
+	} else {
+		if (sock->unk14) {
+			return DECI2_ERR_INVALID;
+		}
+
+		sock->unk14 = 1;
+		sock->unk18 = thid;
+		sock->unk1C = 1;
+	}
+
+	if (d2m.isdbgp_sock) {
+		d2m.unk4 |= 2;
+		dbg_sock = &d2m.sock[d2m.isdbgp_sock];
+		dbg_sock->handler(10, 0, dbg_sock->opt);
+	}
+
+	return 1;
+}
+
+int
+sceDeci2ExSignalSema(int s, int semid)
+{
+	struct deci2_socket *sock;
+	struct deci2_socket *dbg_sock;
+
+	int unk;
+
+	sock = &d2m.sock[s];
+
+	if (!func_00002A0C(s)) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (sock->unk14 == 2 && sock->unk18 == semid) {
+		sock->unk1C++;
+	} else {
+		if (sock->unk14) {
+			return DECI2_ERR_INVALID;
+		}
+
+		sock->unk14 = 2;
+		sock->unk18 = semid;
+		sock->unk1C = 1;
+	}
+
+	if (d2m.isdbgp_sock) {
+		d2m.unk4 |= 2;
+		dbg_sock = &d2m.sock[d2m.isdbgp_sock];
+		dbg_sock->handler(10, 0, dbg_sock->opt);
+	}
+
+	return 1;
+}
+
+
+int
+sceDeci2ExSetEventFlag(int s, int evfid, unsigned long bitpattern)
+{
+	struct deci2_socket *sock;
+	struct deci2_socket *dbg_sock;
+
+	int unk;
+
+	sock = &d2m.sock[s];
+
+	if (!func_00002A0C(s)) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (sock->unk14 == 3 && sock->unk18 == evfid) {
+		sock->unk1C |= bitpattern;
+	} else {
+		if (sock->unk14) {
+			return DECI2_ERR_INVALID;
+		}
+
+		sock->unk14 = 3;
+		sock->unk18 = evfid;
+		sock->unk1C = bitpattern;
+	}
+
+	if (d2m.isdbgp_sock) {
+		d2m.unk4 |= 2;
+		dbg_sock = &d2m.sock[d2m.isdbgp_sock];
+		dbg_sock->handler(10, 0, dbg_sock->opt);
+	}
+
+	return 1;
+}
+
+#endif
+
+// sw irq handler
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_0000121C);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00001364);
