@@ -5,7 +5,7 @@
 
 struct deci2_iface {
 	/* 0x0 */ int node;
-	/* 0x0 */ int (*handler)();
+	/* 0x4 */ int (*handler)();
 	/* 0x8 */ void *opt;
 	/* 0xc */ int unkC;
 	/* 0x10 */ int unk10;

@@ -18,6 +18,7 @@
 ModuleInfo Module = { "Deci2_Manager", 0x105 };
 
 #define MAX_SOCK 35
+#define MAX_INTERFACE 2
 
 struct deci2_socket {
 	/* 0x000 */ void (*handler)();
@@ -41,11 +42,11 @@ struct deci2_manager {
 	/* 0x014 */ void *dbg_print_opt;
 	/* 0x018 */ int (*unk18)();
 	/* 0x01C */ struct deci2_iface *unk1C;
-	/* 0x020 */ int unk20;
+	/* 0x020 */ struct deci2_iface *unk20;
 	/* 0x024 */ int isdbgp_sock;
 	/* 0x028 */ struct deci2_socket sock[MAX_SOCK];
-	/* 0x6a0 */ struct deci2_iface iface[2];
-	/* 0x600 */ struct stru_66F0 *unk600;
+	/* 0x5a0 */ struct deci2_iface iface[MAX_INTERFACE];
+	/* 0x600 */ void **unk600;
 	/* 0x604 */ int (*unk604)();
 };
 
@@ -53,12 +54,8 @@ struct stru_6D10 {
 	/* 0x0 */ int unk0[0x1009];
 };
 
-struct stru_66F0 {
-	/* 0x0 */ char unk0[0x8];
-};
-
 /* 0x6700 */ struct deci2_manager d2m;
-/* 0x66f0 */ struct stru_66F0 unk66F0;
+/* 0x66f0 */ void *unk66F0[MAX_INTERFACE];
 /* 0x6d10 */ struct stru_6D10 unk6D10[2];
 
 extern libhead deci2api_stub;
@@ -87,7 +84,7 @@ start()
 	memset(&d2m, 0, sizeof(d2m));
 	memset(&unk6D10, 0, sizeof(unk6D10));
 	memset(&unk66F0, 0, sizeof(unk66F0));
-	d2m.unk600 = &unk66F0;
+	d2m.unk600 = unk66F0;
 
 	bootmode = QueryBootMode(1);
 	if (bootmode) {
@@ -171,7 +168,7 @@ sceDeci2Shutdown()
 
 	CpuSuspendIntr(&oldstat);
 
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < MAX_INTERFACE; i++) {
 		iface = &d2m.iface[i];
 
 		if (d2m.iface[i].handler)
@@ -356,7 +353,7 @@ sceDeci2ExReqSend(int s, char dest)
 	}
 
 	iface = d2m.iface;
-	for (i = 0; i < 2; i++) {
+	for (i = 0; i < MAX_INTERFACE; i++) {
 		if (iface->node == dest) {
 			if (!(iface->unkC & 1)) {
 				return DECI2_ERR_NOROUTE;
@@ -742,7 +739,47 @@ func_0000121C(void *arg)
 	return 0;
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00001364);
+struct if_param {
+	u_short node;
+	void *opt;
+	void *handler;
+	void *interrupt;
+};
+
+// sceDeci2ExIfCreate
+struct deci2_iface *
+func_00001364(struct if_param *ifp)
+{
+	struct deci2_iface *iface;
+	int *bm;
+	int i;
+
+	for (i = 0; i < MAX_INTERFACE; i++) {
+		if (!d2m.iface[i].handler) {
+
+			if (ifp->node == DECI2_NODE_HOST) {
+				d2m.unk20 = &d2m.iface[i];
+			}
+
+			d2m.iface[i].node = ifp->node;
+			d2m.iface[i].handler = ifp->handler;
+			d2m.iface[i].opt = ifp->opt;
+			d2m.unk600[i] = ifp->interrupt;
+
+			bm = QueryBootMode(4);
+			if (bm && !*(u_short *)bm) {
+				sceDeci2ExPanic(" interface %d dest=0x%x handler=0x%x opt=0x%x interface=0x%x\n\r",
+				  i, ifp->node, ifp->handler, ifp->opt, &d2m.iface[i]);
+			}
+
+			iface = &d2m.iface[i];
+			iface->handler(11, iface->opt, d2m.unkC, 0);
+			return iface;
+		}
+	}
+
+	return NULL;
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2IfCreate);
 
