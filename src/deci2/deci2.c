@@ -335,7 +335,7 @@ sceDeci2ExReqSend(int s, char dest)
 		return DECI2_ERR_WOULDBLOCK;
 	}
 
-	if (dest == 'H') {
+	if (dest == DECI2_NODE_HOST) {
 		if (!d2m.unk1C) {
 			if (!d2m.unk20) {
 				return DECI2_ERR_NOHOSTIF;
@@ -350,7 +350,7 @@ sceDeci2ExReqSend(int s, char dest)
 		}
 
 		sock->unk20 = d2m.unk1C;
-		sock->unk10 = 'H';
+		sock->unk10 = DECI2_NODE_HOST;
 		func_0000231C();
 		return 1;
 	}
@@ -400,7 +400,43 @@ sceDeci2ReqSend(int s, char dest)
 	return ret;
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExSend);
+int
+sceDeci2ExSend(int s, void *buf, unsigned short len)
+{
+	struct deci2_iface *iface;
+
+	if (!func_00002A0C(s)) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	iface = d2m.sock[s].unk20;
+
+	if (!iface) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (iface->unk10 != &d2m.sock[s]) {
+		return DECI2_ERR_INVALSOCK;
+	}
+
+	if (!(iface->unkC & 8)) {
+		return DECI2_ERR_WOULDBLOCK;
+	}
+
+	if ((u_int)buf & 3) {
+		return DECI2_ERR_INVALADDR;
+	}
+
+	if (!iface->unk14) {
+		if (len < 8) {
+			return DECI2_ERR_PKTSIZE;
+		}
+
+		iface->unk14 = *(u_short *)buf;
+	}
+
+	return iface->handler(4, iface->opt, buf, len);
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExLock);
 
