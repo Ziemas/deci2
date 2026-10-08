@@ -786,7 +786,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 	int *bm;
 
 	switch (event) {
-	case 1:
+	case IFM_IN:
 		if (d2m.unkC & 3) {
 			sceDeci2ExPanic("IFM_IN event from if driver %d\n", iface - d2m.iface);
 		}
@@ -805,7 +805,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 		iface->rcv->handler(1, len, iface->rcv->opt);
 		iface->unk1C &= ~4;
 		break;
-	case 2:
+	case IFM_INDONE:
 		if (d2m.unkC & 3) {
 			sceDeci2ExPanic("IFM_INDONE event from if driver %d\n", iface - d2m.iface);
 		}
@@ -850,7 +850,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 			sceDeci2ExPanic("IFM_INDONE: Recieve Socket not found\n");
 		}
 		break;
-	case 3:
+	case IFM_OUT:
 		if (d2m.unkC & 3) {
 			sceDeci2ExPanic("IFM_OUT event from if driver %d\n", iface - d2m.iface);
 		}
@@ -869,7 +869,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 			sceDeci2ExPanic("IFM_OUT: Send Socket not found\n");
 		}
 		break;
-	case 4:
+	case IFM_OUTDONE:
 		if (d2m.unkC & 3) {
 			sceDeci2ExPanic("IFM_OUTDONE event from if driver %d\n", iface - d2m.iface);
 		}
@@ -894,7 +894,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 			sceDeci2ExPanic("IFM_OUTDONE: Send Socket not found\n");
 		}
 		break;
-	case 5:
+	case IFM_UP:
 		iface->flags |= 1;
 		bm = QueryBootMode(4);
 		if (bm && !*(u_short *)bm) {
@@ -902,7 +902,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 		}
 		func_00002C08(4, iface->node);
 		break;
-	case 6:
+	case IFM_DOWN:
 		iface->flags &= ~1;
 		break;
 	}

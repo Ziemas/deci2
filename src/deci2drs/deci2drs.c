@@ -262,7 +262,7 @@ func_00000518(struct drv_sif *drv)
 		if (drv->flag & 0x40) {
 			again = 1;
 			drv->flag = drv->flag & ~0x40;
-			sceDeci2IfEventHandler(4, drv->iface, drv->unk2C, 0, 0);
+			sceDeci2IfEventHandler(IFM_OUTDONE, drv->iface, drv->unk2C, 0, 0);
 			if (drv->flag & 1) {
 				drv->flag |= 0x20;
 			}
@@ -272,7 +272,7 @@ func_00000518(struct drv_sif *drv)
 			if ((drv->flag & 0x21) == 0x21) {
 				again = 1;
 				drv->flag &= ~0x20;
-				sceDeci2IfEventHandler(3, drv->iface, 0, 0, 0);
+				sceDeci2IfEventHandler(IFM_OUT, drv->iface, 0, 0, 0);
 			}
 		}
 
@@ -285,14 +285,14 @@ func_00000518(struct drv_sif *drv)
 				drv->flag |= 0x2000;
 			}
 
-			sceDeci2IfEventHandler(2, drv->iface, drv->unk1C, 0, 0);
+			sceDeci2IfEventHandler(IFM_INDONE, drv->iface, drv->unk1C, 0, 0);
 		}
 
 		if (!(drv->flag & 0x1000)) {
 			if (drv->flag & 0x2000) {
 				again = 1;
 				drv->flag &= ~0x2000;
-				sceDeci2IfEventHandler(1, drv->iface, drv->unk14 - drv->unk18, drv->unkC,
+				sceDeci2IfEventHandler(IFM_IN, drv->iface, drv->unk14 - drv->unk18, drv->unkC,
 				  drv->unk10);
 			}
 		}
@@ -486,7 +486,7 @@ drs_poll_1(struct drv_sif *drv, int arg1, int arg2)
 			sceSifSetMSflg(0x40000000);
 			drv->flag &= ~0x200000;
 			drs_if_func[6] = drs_poll_2;
-			sceDeci2IfEventHandler(5, sifdrv.iface, 0, 0, 0);
+			sceDeci2IfEventHandler(IFM_UP, sifdrv.iface, 0, 0, 0);
 		}
 	}
 
@@ -570,7 +570,7 @@ drs_shutdown(struct drv_sif *drv, int arg1, int arg2)
 		return;
 	}
 
-	sceDeci2IfEventHandler(6, sifdrv.iface, 0, 0, 0);
+	sceDeci2IfEventHandler(IFM_DOWN, sifdrv.iface, 0, 0, 0);
 	while (drv->flag & 0x101) {
 		sceDeci2ExPoll();
 	}

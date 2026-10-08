@@ -223,7 +223,7 @@ start()
 	func_00000E38();
 	EnableIntr(pifdrv.irq_num);
 
-	sceDeci2IfEventHandler(5, pifdrv.iface, 0, 0, 0);
+	sceDeci2IfEventHandler(IFM_UP, pifdrv.iface, 0, 0, 0);
 
 	return RESIDENT_END;
 }
@@ -388,7 +388,7 @@ func_00000708(struct drv_pif *drv)
 			drv->flag &= ~0x40;
 
 			cont = 1;
-			sceDeci2IfEventHandler(4, drv->iface, drv->unk2C, 0, 0);
+			sceDeci2IfEventHandler(IFM_OUTDONE, drv->iface, drv->unk2C, 0, 0);
 			if (drv->flag & 1) {
 				func_00000568(drv, 512);
 			}
@@ -403,7 +403,7 @@ func_00000708(struct drv_pif *drv)
 				drv->flag &= ~0x20;
 
 				cont = 1;
-				sceDeci2IfEventHandler(3, drv->iface, 0, 0, 0);
+				sceDeci2IfEventHandler(IFM_OUT, drv->iface, 0, 0, 0);
 			}
 		}
 
@@ -411,7 +411,7 @@ func_00000708(struct drv_pif *drv)
 			drv->flag &= ~0x4000;
 
 			cont = 1;
-			sceDeci2IfEventHandler(2, drv->iface, drv->unk28, 0, 0);
+			sceDeci2IfEventHandler(IFM_INDONE, drv->iface, drv->unk28, 0, 0);
 			func_00000E38();
 		}
 
@@ -429,7 +429,7 @@ func_00000708(struct drv_pif *drv)
 				}
 
 				cont = 1;
-				sceDeci2IfEventHandler(1, drv->iface, unk, drv->hdr.proto, drv->hdr.dest);
+				sceDeci2IfEventHandler(IFM_IN, drv->iface, unk, drv->hdr.proto, drv->hdr.dest);
 			}
 		}
 	}
