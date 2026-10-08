@@ -21,7 +21,7 @@ ModuleInfo Module = { "Deci2_Manager", 0x105 };
 #define MAX_INTERFACE 2
 
 struct deci2_socket {
-	/* 0x000 */ void (*handler)();
+	/* 0x000 */ void (*handler)(int, int, void *);
 	/* 0x004 */ void *opt;
 	/* 0x008 */ u_int proto;
 	/* 0x00c */ u_int unkC;
@@ -51,7 +51,9 @@ struct deci2_manager {
 };
 
 struct stru_6D10 {
-	/* 0x0 */ int unk0[0x1009];
+	/* 0x0 */ int flag;
+	/* 0x4 */ int sock;
+	/* 0x8 */ char unk0[0x401c];
 };
 
 /* 0x6700 */ struct deci2_manager d2m;
@@ -68,6 +70,9 @@ void func_00002A40();
 int func_00003760(); // should be in sdb header
 int func_000001F4(void *opt);
 int func_00000240(void *opt);
+void func_00001FC4(struct deci2_iface *src, struct deci2_iface *dst, int len, int protocol,
+  int node);
+void func_0000214C(struct deci2_iface *iface, int len, int protocol, int node, int unk);
 void func_00002234(struct deci2_iface *iface);
 void func_0000231C();
 void func_000025BC(struct deci2_iface *iface, int len, int protocol, int node);
@@ -111,7 +116,7 @@ start()
 		d2m.sock[i + 1].opt = (void *)&unk6D10[i];
 		d2m.sock[i + 1].unkC = 1;
 
-		unk6D10[i].unk0[1] = i + 1;
+		unk6D10[i].sock = i + 1;
 	}
 
 	bm[0] = 0x10002;
@@ -920,7 +925,70 @@ INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002234);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_0000231C);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_000025BC);
+void
+func_000025BC(struct deci2_iface *iface, int len, int protocol, int node)
+{
+	if (iface->rcv) {
+		sceDeci2ExPanic("deliver_rcv_packet: rcvsocket %x\n", iface->rcv);
+		return;
+	}
+
+	iface->unk24 = 0;
+	iface->unk28 = 0;
+
+	if (node == DECI2_NODE_HOST) {
+		if (!d2m.unk1C) {
+			func_0000214C(iface, len, protocol, node, 0);
+		} else {
+			func_00001FC4(iface, d2m.unk1C, len, protocol, node);
+		}
+
+		return;
+	}
+
+	if (node != DECI2_NODE_IOP) {
+		int i;
+
+		for (i = 0; i < MAX_INTERFACE; i++) {
+			if (d2m.iface[i].node == node && d2m.iface[i].flags & 1) {
+				break;
+			}
+		}
+
+		if (i < MAX_INTERFACE && iface->flags & 1) {
+			func_00001FC4(iface, &d2m.iface[i], len, protocol, node);
+		} else {
+			if (d2m.unkC & 3) {
+				sceDeci2ExPanic("deliver_rcv_packet: no route error prot=%d dest=%c\n", protocol,
+				  node);
+			}
+
+			func_0000214C(iface, len, protocol, node, 0);
+		}
+	} else {
+		struct deci2_socket *sock;
+		int i;
+
+		for (i = 0, sock = d2m.sock; i < MAX_SOCK; i++, sock++) {
+			if (sock->proto == protocol) {
+				break;
+			}
+		}
+
+		if (i < MAX_SOCK) {
+			if (d2m.unk0 && i != d2m.unk0) {
+				d2m.unk4 |= 1;
+				func_0000214C(iface, len, protocol, node, 2);
+			} else {
+				sock->unk24 = iface;
+				iface->rcv = sock;
+			}
+
+		} else {
+			func_0000214C(iface, len, protocol, node, 1);
+		}
+	}
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExPoll);
 
