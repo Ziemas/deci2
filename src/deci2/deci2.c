@@ -594,18 +594,11 @@ int (*sceDeci2SetPollCallback(int (*cb)()))()
 	return ret;
 }
 
-#if 1
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExWakeupThread);
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExSignalSema);
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExSetEventFlag);
-#else
 int
 sceDeci2ExWakeupThread(int s, int thid)
 {
 	struct deci2_socket *sock;
 	struct deci2_socket *dbg_sock;
-
-	int unk;
 
 	sock = &d2m.sock[s];
 
@@ -627,8 +620,7 @@ sceDeci2ExWakeupThread(int s, int thid)
 
 	if (d2m.isdbgp_sock) {
 		d2m.unk4 |= 2;
-		dbg_sock = &d2m.sock[d2m.isdbgp_sock];
-		dbg_sock->handler(10, 0, dbg_sock->opt);
+		(&d2m.sock[d2m.isdbgp_sock])->handler(10, 0, (&d2m.sock[d2m.isdbgp_sock])->opt);
 	}
 
 	return 1;
@@ -639,8 +631,6 @@ sceDeci2ExSignalSema(int s, int semid)
 {
 	struct deci2_socket *sock;
 	struct deci2_socket *dbg_sock;
-
-	int unk;
 
 	sock = &d2m.sock[s];
 
@@ -662,8 +652,7 @@ sceDeci2ExSignalSema(int s, int semid)
 
 	if (d2m.isdbgp_sock) {
 		d2m.unk4 |= 2;
-		dbg_sock = &d2m.sock[d2m.isdbgp_sock];
-		dbg_sock->handler(10, 0, dbg_sock->opt);
+		(&d2m.sock[d2m.isdbgp_sock])->handler(10, 0, (&d2m.sock[d2m.isdbgp_sock])->opt);
 	}
 
 	return 1;
@@ -674,8 +663,6 @@ sceDeci2ExSetEventFlag(int s, int evfid, unsigned long bitpattern)
 {
 	struct deci2_socket *sock;
 	struct deci2_socket *dbg_sock;
-
-	int unk;
 
 	sock = &d2m.sock[s];
 
@@ -697,14 +684,11 @@ sceDeci2ExSetEventFlag(int s, int evfid, unsigned long bitpattern)
 
 	if (d2m.isdbgp_sock) {
 		d2m.unk4 |= 2;
-		dbg_sock = &d2m.sock[d2m.isdbgp_sock];
-		dbg_sock->handler(10, 0, dbg_sock->opt);
+		(&d2m.sock[d2m.isdbgp_sock])->handler(10, 0, (&d2m.sock[d2m.isdbgp_sock])->opt);
 	}
 
 	return 1;
 }
-
-#endif
 
 int
 func_0000121C(void *arg)
