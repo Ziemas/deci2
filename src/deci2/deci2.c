@@ -40,7 +40,7 @@ struct deci2_manager {
 	/* 0x00c */ int unkC;
 	/* 0x010 */ void (*dbg_print_fn)(void *, int);
 	/* 0x014 */ void *dbg_print_opt;
-	/* 0x018 */ int (*unk18)();
+	/* 0x018 */ int (*poll_cb)();
 	/* 0x01C */ struct deci2_iface *unk1C;
 	/* 0x020 */ struct deci2_iface *unk20;
 	/* 0x024 */ int isdbgp_sock;
@@ -594,9 +594,9 @@ sceDeci2DbgPrintStatus(void (*fn)(void *, int), void *opt)
 
 int (*sceDeci2SetPollCallback(int (*cb)()))()
 {
-	void *ret = d2m.unk18;
+	void *ret = d2m.poll_cb;
 
-	d2m.unk18 = cb;
+	d2m.poll_cb = cb;
 
 	return ret;
 }
@@ -990,11 +990,57 @@ func_000025BC(struct deci2_iface *iface, int len, int protocol, int node)
 	}
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2ExPoll);
+void
+sceDeci2ExPoll()
+{
+	struct deci2_iface *iface;
+	int i, again;
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2Poll);
+	again = 1;
+	while (again) {
+		again = 0;
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002904);
+		iface = d2m.iface;
+		for (i = 0; i < MAX_INTERFACE; i++) {
+			if (iface->handler) {
+				iface->handler(6, iface->opt, 0, 0);
+			}
+
+			iface++;
+		}
+
+		iface = d2m.iface;
+		for (i = 0; i < MAX_INTERFACE; i++) {
+			if (iface->flags & 2 || iface->unk1C & 2) {
+				again = 1;
+				iface->flags &= ~2;
+				iface->unk1C &= ~2;
+			}
+
+			iface++;
+		}
+	}
+}
+
+void
+sceDeci2Poll()
+{
+	if (d2m.poll_cb) {
+		d2m.poll_cb();
+	}
+
+	asm volatile("li $2, 1\n"
+				 "syscall\n" ::
+				   : "memory");
+}
+
+void
+func_00002904()
+{
+	asm volatile("li $2, 2\n"
+				 "syscall\n" ::
+				   : "memory");
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002914);
 
