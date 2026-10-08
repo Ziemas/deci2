@@ -55,4 +55,4 @@ iSignalSema = 0x5a8c; // type:func
 
 d2m = 0x6700; // size:0x608
 unk66F0 = 0x66f0; // size:0x8
-unk6D10 = 0x6d10; // size:0x8048
+relay = 0x6d10; // size:0x8048

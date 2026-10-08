@@ -50,15 +50,22 @@ struct deci2_manager {
 	/* 0x604 */ int (*unk604)();
 };
 
-struct stru_6D10 {
-	/* 0x0 */ int flag;
-	/* 0x4 */ int sock;
-	/* 0x8 */ char unk0[0x401c];
+struct deci2_relay {
+	/* 0x00 */ int flag;
+	/* 0x04 */ int sock;
+	/* 0x08 */ int unk8;
+	/* 0x0c */ int unkC;
+	/* 0x10 */ struct deci2_iface *unk10;
+	/* 0x14 */ int unk14;
+	/* 0x18 */ int unk18;
+	/* 0x1c */ int rpos;
+	/* 0x20 */ int wpos;
+	/* 0x24 */ char buf[0x4000];
 };
 
 /* 0x6700 */ struct deci2_manager d2m;
 /* 0x66f0 */ void *unk66F0[MAX_INTERFACE];
-/* 0x6d10 */ struct stru_6D10 unk6D10[2];
+/* 0x6d10 */ struct deci2_relay relay[2];
 
 extern libhead deci2api_stub;
 extern libhead deci2log_stub;
@@ -89,7 +96,7 @@ start()
 	int bm[2];
 
 	memset(&d2m, 0, sizeof(d2m));
-	memset(&unk6D10, 0, sizeof(unk6D10));
+	memset(&relay, 0, sizeof(relay));
 	memset(&unk66F0, 0, sizeof(unk66F0));
 	d2m.unk600 = unk66F0;
 
@@ -113,10 +120,10 @@ start()
 	for (i = 0; i < 2; i++) {
 		d2m.sock[i + 1].proto = -1;
 		d2m.sock[i + 1].handler = func_00001BA0;
-		d2m.sock[i + 1].opt = (void *)&unk6D10[i];
+		d2m.sock[i + 1].opt = &relay[i];
 		d2m.sock[i + 1].unkC = 1;
 
-		unk6D10[i].sock = i + 1;
+		relay[i].sock = i + 1;
 	}
 
 	bm[0] = 0x10002;
@@ -913,7 +920,68 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 	}
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00001BA0);
+void
+func_00001BA0(int event, int param, void *opt)
+{
+	struct deci2_relay *rly = opt;
+	struct deci2_socket *sock = &d2m.sock[rly->sock];
+
+	switch (event) {
+	case 1:
+		sceDeci2ExRecv(rly->sock, &rly->buf[rly->rpos], 0x4000 - rly->rpos);
+		break;
+	case 7:
+		if (!rly->unk14) {
+			rly->unk14 = *(u_short *)rly->buf;
+		}
+
+		rly->rpos += param;
+		rly->unk18 += param;
+		if (rly->unk18 >= rly->unk14 || rly->rpos >= 0x4000) {
+			rly->unk10->handler(7, rly->unk10->opt, 0, 0);
+			rly->flag |= 4;
+			rly->wpos = 0;
+			if (rly->flag & 2) {
+				rly->flag &= ~2;
+				sock->unk20->flags |= 2;
+				sock->unk20->handler(10, sock->unk20->opt, 0, 0);
+			}
+		}
+
+		break;
+	case 8:
+		if (!rly->unk14 || (rly->unk18 < rly->unk14 && rly->rpos < 0x4000)) {
+			rly->flag |= 2;
+			sock->unk20->handler(9, sock->unk20->opt, 0, 0);
+		}
+		break;
+	case 3:
+		sceDeci2ExSend(rly->sock, &rly->buf[rly->wpos], rly->rpos - rly->wpos);
+		break;
+	case 9:
+		rly->wpos += param;
+		if (rly->wpos >= rly->rpos) {
+			rly->rpos = 0;
+			rly->flag &= ~4;
+			rly->unk10->unk1C |= 2;
+			rly->unk10->handler(8, rly->unk10->opt, 0, 0);
+
+			if (rly->unk14 > rly->unk18) {
+				rly->flag |= 2;
+				sock->unk20->handler(9, sock->unk20->opt, 0, 0);
+			}
+		}
+		break;
+	case 4:
+		rly->flag &= ~1;
+		break;
+	case 2:
+		break;
+	default:
+		sceDeci2ExPanic("RelayInOut: unknown event 0x%x\n", event);
+		break;
+	}
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00001E20);
 
