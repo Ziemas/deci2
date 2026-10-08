@@ -5,16 +5,31 @@
 
 struct deci2_socket;
 
+enum IFM {
+	IFM_IN = 1,
+	IFM_INDONE = 2,
+	IFM_OUT = 3,
+	IFM_OUTDONE = 4,
+
+	// guessed names
+	IFM_UP = 5,
+	IFM_DOWN = 6,
+};
+
+enum IFFLAG {
+	IFF_UP = 1,
+};
+
 struct deci2_iface {
 	/* 0x0 */ int node;
 	/* 0x4 */ int (*handler)();
 	/* 0x8 */ void *opt;
-	/* 0xc */ int unkC;
-	/* 0x10 */ struct deci2_socket *unk10;
+	/* 0xc */ int flags;
+	/* 0x10 */ struct deci2_socket *send;
 	/* 0x14 */ int unk14;
 	/* 0x18 */ int unk18;
 	/* 0x1c */ int unk1C;
-	/* 0x20 */ int unk20;
+	/* 0x20 */ struct deci2_socket *rcv;
 	/* 0x24 */ int unk24;
 	/* 0x28 */ int unk28;
 	/* 0x2c */ void *unk2C;

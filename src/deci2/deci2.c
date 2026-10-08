@@ -68,11 +68,13 @@ void func_00002A40();
 int func_00003760(); // should be in sdb header
 int func_000001F4(void *opt);
 int func_00000240(void *opt);
+void func_00002234(struct deci2_iface *iface);
 void func_0000231C();
+void func_000025BC(struct deci2_iface *iface, int len, int protocol, int node);
 void func_00002904();
 void func_00002914();
 int func_00002A0C(int s);
-void func_00002C08(int a1, u_short proto);
+void func_00002C08(int, int);
 
 int
 start()
@@ -355,7 +357,7 @@ sceDeci2ExReqSend(int s, char dest)
 	iface = d2m.iface;
 	for (i = 0; i < MAX_INTERFACE; i++) {
 		if (iface->node == dest) {
-			if (!(iface->unkC & 1)) {
+			if (!(iface->flags & 1)) {
 				return DECI2_ERR_NOROUTE;
 			}
 
@@ -412,11 +414,11 @@ sceDeci2ExSend(int s, void *buf, unsigned short len)
 		return DECI2_ERR_INVALSOCK;
 	}
 
-	if (iface->unk10 != &d2m.sock[s]) {
+	if (iface->send != &d2m.sock[s]) {
 		return DECI2_ERR_INVALSOCK;
 	}
 
-	if (!(iface->unkC & 8)) {
+	if (!(iface->flags & 8)) {
 		return DECI2_ERR_WOULDBLOCK;
 	}
 
@@ -778,7 +780,133 @@ sceDeci2IfCreate(short node, void *opt, int (*handler)(), int (*interrupt)())
 	return (struct deci2_iface *)CpuInvokeInKmode(func_00001364, &ifp);
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", sceDeci2IfEventHandler);
+void
+sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protocol, int node)
+{
+	int *bm;
+
+	switch (event) {
+	case 1:
+		if (d2m.unkC & 3) {
+			sceDeci2ExPanic("IFM_IN event from if driver %d\n", iface - d2m.iface);
+		}
+
+		if (!iface->rcv) {
+			func_000025BC(iface, len, protocol, node);
+			iface->handler(11, iface->opt, d2m.unkC, 0);
+			iface->handler(0, iface->opt, 0, 0);
+		}
+
+		if (d2m.unkC & 2) {
+			sceDeci2ExPanic("Send DECI2_READ event to socket=%d\n", iface->rcv - d2m.sock);
+		}
+
+		iface->unk1C |= 4;
+		iface->rcv->handler(1, len, iface->rcv->opt);
+		iface->unk1C &= ~4;
+		break;
+	case 2:
+		if (d2m.unkC & 3) {
+			sceDeci2ExPanic("IFM_INDONE event from if driver %d\n", iface - d2m.iface);
+		}
+
+		if (iface->rcv) {
+			if (!iface->unk24) {
+				// len from header?
+				iface->unk24 = *(u_short *)iface->unk2C;
+			}
+
+			if (iface->unk24 < iface->unk28 + len) {
+				if (iface->unk24 + 3 < iface->unk28 + len) {
+					sceDeci2ExPanic("IFM_INDONE: Recieve packet too large %d>%d\n",
+					  iface->unk28 + len, iface->unk24);
+				}
+
+				len = iface->unk24 - iface->unk28;
+			}
+
+			iface->unk28 += len;
+			if (iface->rcv->unkC & 1) {
+				if ((d2m.unkC & 2) != 0) {
+					sceDeci2ExPanic("Send DECI2Ex_RflagDone event to socket=%d\n",
+					  iface->rcv - d2m.sock);
+				}
+
+				iface->rcv->handler(7, len, iface->rcv->opt);
+			}
+
+			if (iface->unk24 <= iface->unk28) {
+				if ((d2m.unkC & 2) != 0) {
+					sceDeci2ExPanic("Send DECI2_READDONE event to socket=%d\n",
+					  iface->rcv - d2m.sock);
+				}
+
+				iface->rcv->handler(2, d2m.unkC, iface->rcv->opt);
+				iface->rcv->unk24 = 0;
+				iface->rcv = NULL;
+				iface->handler(2, iface->opt, 0, 0);
+			}
+		} else {
+			sceDeci2ExPanic("IFM_INDONE: Recieve Socket not found\n");
+		}
+		break;
+	case 3:
+		if (d2m.unkC & 3) {
+			sceDeci2ExPanic("IFM_OUT event from if driver %d\n", iface - d2m.iface);
+		}
+
+		if (iface->send) {
+			iface->flags &= ~0x10;
+			iface->flags |= 0x8;
+
+			if (d2m.unkC & 2) {
+				sceDeci2ExPanic("Send DECI2_WRITE event to socket=%d\n", iface->send - d2m.sock);
+			}
+
+			iface->send->handler(3, 0, iface->send->opt);
+			iface->flags &= ~0x8;
+		} else {
+			sceDeci2ExPanic("IFM_OUT: Send Socket not found\n");
+		}
+		break;
+	case 4:
+		if (d2m.unkC & 3) {
+			sceDeci2ExPanic("IFM_OUTDONE event from if driver %d\n", iface - d2m.iface);
+		}
+
+		if (iface->send) {
+			iface->unk18 += len;
+			if (len > 0) {
+				if (iface->send->unkC & 1) {
+					if (d2m.unkC & 2) {
+						sceDeci2ExPanic("Send DECI2Ex_WflagDone event to socket=%d\n",
+						  iface->send - d2m.sock);
+					}
+
+					iface->send->handler(9, len, iface->send->opt);
+				}
+			}
+
+			if (iface->unk14 > 0 && iface->unk18 >= iface->unk14) {
+				func_00002234(iface);
+			}
+		} else {
+			sceDeci2ExPanic("IFM_OUTDONE: Send Socket not found\n");
+		}
+		break;
+	case 5:
+		iface->flags |= 1;
+		bm = QueryBootMode(4);
+		if (bm && !*(u_short *)bm) {
+			sceDeci2ExPanic(" interface %d active\n\r", iface - d2m.iface);
+		}
+		func_00002C08(4, iface->node);
+		break;
+	case 6:
+		iface->flags &= ~1;
+		break;
+	}
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00001BA0);
 
