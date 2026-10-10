@@ -7,7 +7,7 @@ struct deci2_socket;
 
 enum DECI2Ex {
 	DECI2Ex_RflagDone = 7,
-	DECI2Ex_WriteStart= 8,
+	DECI2Ex_WriteStart = 8,
 	DECI2Ex_WflagDone = 9,
 };
 
