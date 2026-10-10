@@ -188,7 +188,7 @@ sceDeci2Shutdown()
 		iface = &d2m.iface[i];
 
 		if (d2m.iface[i].handler)
-			iface->handler(12, iface->opt, 0, 0);
+			iface->handler(IFF_SHUTDOWN, iface->opt, 0, 0);
 	}
 
 	CpuResumeIntr(oldstat);
@@ -329,7 +329,7 @@ sceDeci2ExRecv(int s, void *buf, u_short len)
 		iface->unk2C = buf;
 	}
 
-	return iface->handler(1, iface->opt, buf, len);
+	return iface->handler(IFF_RCV_READ, iface->opt, buf, len);
 }
 
 int
@@ -449,7 +449,7 @@ sceDeci2ExSend(int s, void *buf, unsigned short len)
 		iface->unk14 = *(u_short *)buf;
 	}
 
-	return iface->handler(4, iface->opt, buf, len);
+	return iface->handler(IFF_SEND_WRITE, iface->opt, buf, len);
 }
 
 int
@@ -508,7 +508,7 @@ sceDeci2ExRecvSuspend(int s)
 	}
 
 	if (sock->unk24) {
-		sock->unk24->handler(7, sock->unk24->opt, 0, 0);
+		sock->unk24->handler(IFF_RCV_OFF, sock->unk24->opt, 0, 0);
 		return 1;
 	}
 
@@ -532,7 +532,7 @@ sceDeci2ExRecvUnSuspend(int s)
 
 	if (sock->unk24) {
 		sock->unk24->unk1C |= 2;
-		sock->unk24->handler(8, sock->unk24->opt, 0, 0);
+		sock->unk24->handler(IFF_RCV_ON, sock->unk24->opt, 0, 0);
 		return 1;
 	}
 
@@ -774,7 +774,7 @@ func_00001364(struct if_param *ifp)
 			}
 
 			iface = &d2m.iface[i];
-			iface->handler(11, iface->opt, d2m.debug_flag, 0);
+			iface->handler(IFF_DEBUG, iface->opt, d2m.debug_flag, 0);
 			return iface;
 		}
 	}
@@ -808,8 +808,8 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 
 		if (!iface->rcv) {
 			func_000025BC(iface, len, protocol, node);
-			iface->handler(11, iface->opt, d2m.debug_flag, 0);
-			iface->handler(0, iface->opt, 0, 0);
+			iface->handler(IFF_DEBUG, iface->opt, d2m.debug_flag, 0);
+			iface->handler(IFF_RCV_START, iface->opt, 0, 0);
 		}
 
 		if (d2m.debug_flag & 2) {
@@ -817,7 +817,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 		}
 
 		iface->unk1C |= 4;
-		iface->rcv->handler(1, len, iface->rcv->opt);
+		iface->rcv->handler(DECI2_READ, len, iface->rcv->opt);
 		iface->unk1C &= ~4;
 		break;
 	case IFM_INDONE:
@@ -847,7 +847,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 					  iface->rcv - d2m.sock);
 				}
 
-				iface->rcv->handler(7, len, iface->rcv->opt);
+				iface->rcv->handler(DECI2Ex_RflagDone, len, iface->rcv->opt);
 			}
 
 			if (iface->unk24 <= iface->unk28) {
@@ -856,10 +856,10 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 					  iface->rcv - d2m.sock);
 				}
 
-				iface->rcv->handler(2, d2m.debug_flag, iface->rcv->opt);
+				iface->rcv->handler(DECI2_READDONE, d2m.debug_flag, iface->rcv->opt);
 				iface->rcv->unk24 = 0;
 				iface->rcv = NULL;
-				iface->handler(2, iface->opt, 0, 0);
+				iface->handler(IFF_RCV_END, iface->opt, 0, 0);
 			}
 		} else {
 			sceDeci2ExPanic("IFM_INDONE: Recieve Socket not found\n");
@@ -878,7 +878,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 				sceDeci2ExPanic("Send DECI2_WRITE event to socket=%d\n", iface->send - d2m.sock);
 			}
 
-			iface->send->handler(3, 0, iface->send->opt);
+			iface->send->handler(DECI2_WRITE, 0, iface->send->opt);
 			iface->flags &= ~0x8;
 		} else {
 			sceDeci2ExPanic("IFM_OUT: Send Socket not found\n");
@@ -898,7 +898,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 						  iface->send - d2m.sock);
 					}
 
-					iface->send->handler(9, len, iface->send->opt);
+					iface->send->handler(DECI2Ex_WflagDone, len, iface->send->opt);
 				}
 			}
 
@@ -941,13 +941,13 @@ func_00001BA0(int event, int param, void *opt)
 		rly->rpos += param;
 		rly->unk18 += param;
 		if (rly->unk18 >= rly->unk14 || rly->rpos >= 0x4000) {
-			rly->unk10->handler(7, rly->unk10->opt, 0, 0);
+			rly->unk10->handler(IFF_RCV_OFF, rly->unk10->opt, 0, 0);
 			rly->flag |= 4;
 			rly->wpos = 0;
 			if (rly->flag & 2) {
 				rly->flag &= ~2;
 				sock->unk20->flags |= 2;
-				sock->unk20->handler(10, sock->unk20->opt, 0, 0);
+				sock->unk20->handler(IFF_SEND_ON, sock->unk20->opt, 0, 0);
 			}
 		}
 
@@ -955,7 +955,7 @@ func_00001BA0(int event, int param, void *opt)
 	case 8:
 		if (!rly->unk14 || (rly->unk18 < rly->unk14 && rly->rpos < 0x4000)) {
 			rly->flag |= 2;
-			sock->unk20->handler(9, sock->unk20->opt, 0, 0);
+			sock->unk20->handler(IFF_SEND_OFF, sock->unk20->opt, 0, 0);
 		}
 		break;
 	case 3:
@@ -967,11 +967,11 @@ func_00001BA0(int event, int param, void *opt)
 			rly->rpos = 0;
 			rly->flag &= ~4;
 			rly->unk10->unk1C |= 2;
-			rly->unk10->handler(8, rly->unk10->opt, 0, 0);
+			rly->unk10->handler(IFF_RCV_ON, rly->unk10->opt, 0, 0);
 
 			if (rly->unk14 > rly->unk18) {
 				rly->flag |= 2;
-				sock->unk20->handler(9, sock->unk20->opt, 0, 0);
+				sock->unk20->handler(IFF_SEND_OFF, sock->unk20->opt, 0, 0);
 			}
 		}
 		break;
@@ -1117,13 +1117,13 @@ func_00002234(struct deci2_iface *iface)
 	iface->send->unk20 = NULL;
 	iface->send = NULL;
 
-	iface->handler(5, iface->opt, 0, 0);
+	iface->handler(IFF_SEND_END, iface->opt, 0, 0);
 
 	if (d2m.debug_flag & 2) {
 		sceDeci2ExPanic("Send DECI2_WRITEDONE event to socket=%d\n", sock - d2m.sock);
 	}
 
-	sock->handler(4, 0, sock->opt);
+	sock->handler(DECI2_WRITEDONE, 0, sock->opt);
 	func_0000231C();
 }
 
@@ -1165,14 +1165,14 @@ func_0000231C()
 						  sock - d2m.sock);
 					}
 
-					sock->handler(8, 0, sock->opt);
+					sock->handler(DECI2Ex_WriteStart, 0, sock->opt);
 				}
 
 				if (sock->proto != -1) {
-					iface->handler(3, iface->opt, sock->proto, sock->unk10);
+					iface->handler(IFF_SEND_START, iface->opt, sock->proto, sock->unk10);
 				} else {
 					struct deci2_relay *opt = sock->opt;
-					iface->handler(3, iface->opt, opt->unk8, sock->unk10);
+					iface->handler(IFF_SEND_START, iface->opt, opt->unk8, sock->unk10);
 				}
 
 				break;
@@ -1267,7 +1267,7 @@ sceDeci2ExPoll()
 		iface = d2m.iface;
 		for (i = 0; i < MAX_INTERFACE; i++) {
 			if (iface->handler) {
-				iface->handler(6, iface->opt, 0, 0);
+				iface->handler(IFF_POLL, iface->opt, 0, 0);
 			}
 
 			iface++;
@@ -1324,7 +1324,7 @@ func_00002914()
 				sceDeci2ExPanic("  new_bind_poll() #%d\n", i);
 			}
 
-			iface->handler(6, iface->opt, 0, 0);
+			iface->handler(IFF_POLL, iface->opt, 0, 0);
 		}
 	}
 

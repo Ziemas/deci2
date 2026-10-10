@@ -5,6 +5,12 @@
 
 struct deci2_socket;
 
+enum DECI2Ex {
+	DECI2Ex_RflagDone = 7,
+	DECI2Ex_WriteStart= 8,
+	DECI2Ex_WflagDone = 9,
+};
+
 enum IFM {
 	IFM_IN = 1,
 	IFM_INDONE = 2,
@@ -16,8 +22,24 @@ enum IFM {
 	IFM_DOWN = 6,
 };
 
-enum IFFLAG {
-	IFF_UP = 1,
+enum IFFLG {
+	IFLG_UP = 1,
+};
+
+enum IFFUNC {
+	IFF_RCV_START = 0,
+	IFF_RCV_READ = 1,
+	IFF_RCV_END = 2,
+	IFF_SEND_START = 3,
+	IFF_SEND_WRITE = 4,
+	IFF_SEND_END = 5,
+	IFF_POLL = 6,
+	IFF_RCV_OFF = 7,
+	IFF_RCV_ON = 8,
+	IFF_SEND_OFF = 9,
+	IFF_SEND_ON = 10,
+	IFF_DEBUG = 11,
+	IFF_SHUTDOWN = 12,
 };
 
 struct deci2_iface {
