@@ -24,13 +24,13 @@ struct deci2_socket {
 	/* 0x000 */ void (*handler)(int, int, void *);
 	/* 0x004 */ void *opt;
 	/* 0x008 */ u_int proto;
-	/* 0x00c */ u_int unkC;
-	/* 0x010 */ u_int unk10;
-	/* 0x014 */ int unk14;
-	/* 0x018 */ u_int unk18;
-	/* 0x01c */ u_int unk1C;
-	/* 0x020 */ struct deci2_iface *unk20;
-	/* 0x024 */ struct deci2_iface *unk24;
+	/* 0x00c */ u_int ext_flags;
+	/* 0x010 */ u_int dst_node;
+	/* 0x014 */ int wakepup_type;
+	/* 0x018 */ u_int wakeup_arg1;
+	/* 0x01c */ u_int wakeup_arg2;
+	/* 0x020 */ struct deci2_iface *send_if;
+	/* 0x024 */ struct deci2_iface *read_if;
 };
 
 struct deci2_manager {
@@ -47,13 +47,13 @@ struct deci2_manager {
 	/* 0x028 */ struct deci2_socket sock[MAX_SOCK];
 	/* 0x5a0 */ struct deci2_iface iface[MAX_INTERFACE];
 	/* 0x600 */ void **unk600;
-	/* 0x604 */ int (*unk604)();
+	/* 0x604 */ int (*dbg_print)();
 };
 
 struct deci2_relay {
 	/* 0x00 */ int flag;
 	/* 0x04 */ int sock;
-	/* 0x08 */ int unk8;
+	/* 0x08 */ int protocol;
 	/* 0x0c */ int unkC;
 	/* 0x10 */ struct deci2_iface *unk10;
 	/* 0x14 */ int unk14;
@@ -123,7 +123,7 @@ start()
 		d2m.sock[i + 1].proto = -1;
 		d2m.sock[i + 1].handler = func_00001BA0;
 		d2m.sock[i + 1].opt = &relay[i];
-		d2m.sock[i + 1].unkC = 1;
+		d2m.sock[i + 1].ext_flags = 1;
 
 		relay[i].sock = i + 1;
 	}
@@ -204,7 +204,7 @@ sceDeci2GetStatus()
 void
 sceDeci2SetDebugFormatRoutine(int (*fn)(const char *, va_list))
 {
-	d2m.unk604 = fn;
+	d2m.dbg_print = fn;
 }
 
 void
@@ -281,7 +281,7 @@ func_00000558(int s)
 
 	d2m.sock[s].proto = -1;
 
-	while (d2m.sock[s].unk24 || d2m.sock[s].unk20) {
+	while (d2m.sock[s].read_if || d2m.sock[s].send_if) {
 		sceDeci2ExPoll();
 	}
 
@@ -308,7 +308,7 @@ sceDeci2ExRecv(int s, void *buf, u_short len)
 		return -2;
 	}
 
-	iface = d2m.sock[s].unk24;
+	iface = d2m.sock[s].read_if;
 	if (!iface) {
 		return -7;
 	}
@@ -345,7 +345,7 @@ sceDeci2ExReqSend(int s, char dest)
 
 	sock = &d2m.sock[s];
 
-	if (sock->unk20) {
+	if (sock->send_if) {
 		return DECI2_ERR_WOULDBLOCK;
 	}
 
@@ -363,8 +363,8 @@ sceDeci2ExReqSend(int s, char dest)
 			  d2m.unk1C - d2m.iface);
 		}
 
-		sock->unk20 = d2m.unk1C;
-		sock->unk10 = DECI2_NODE_HOST;
+		sock->send_if = d2m.unk1C;
+		sock->dst_node = DECI2_NODE_HOST;
 		func_0000231C();
 		return 1;
 	}
@@ -380,8 +380,8 @@ sceDeci2ExReqSend(int s, char dest)
 				sceDeci2ExPanic("socket=%d point to if=%d\n", sock - d2m.sock, iface - d2m.iface);
 			}
 
-			sock->unk20 = iface;
-			sock->unk10 = dest;
+			sock->send_if = iface;
+			sock->dst_node = dest;
 			func_0000231C();
 			return 1;
 		}
@@ -423,7 +423,7 @@ sceDeci2ExSend(int s, void *buf, unsigned short len)
 		return DECI2_ERR_INVALSOCK;
 	}
 
-	iface = d2m.sock[s].unk20;
+	iface = d2m.sock[s].send_if;
 
 	if (!iface) {
 		return DECI2_ERR_INVALSOCK;
@@ -507,8 +507,8 @@ sceDeci2ExRecvSuspend(int s)
 		return DECI2_ERR_INVALSOCK;
 	}
 
-	if (sock->unk24) {
-		sock->unk24->handler(IFF_RCV_OFF, sock->unk24->opt, 0, 0);
+	if (sock->read_if) {
+		sock->read_if->handler(IFF_RCV_OFF, sock->read_if->opt, 0, 0);
 		return 1;
 	}
 
@@ -530,9 +530,9 @@ sceDeci2ExRecvUnSuspend(int s)
 		return DECI2_ERR_INVALSOCK;
 	}
 
-	if (sock->unk24) {
-		sock->unk24->unk1C |= 2;
-		sock->unk24->handler(IFF_RCV_ON, sock->unk24->opt, 0, 0);
+	if (sock->read_if) {
+		sock->read_if->unk1C |= 2;
+		sock->read_if->handler(IFF_RCV_ON, sock->read_if->opt, 0, 0);
 		return 1;
 	}
 
@@ -547,8 +547,8 @@ sceDeci2ExPanic(const char *fmt, ...)
 	if (d2m.dbg_print_fn) {
 		va_start(va, fmt);
 
-		if (d2m.unk604) {
-			return d2m.unk604(d2m.dbg_print_fn, d2m.dbg_print_opt, fmt, va);
+		if (d2m.dbg_print) {
+			return d2m.dbg_print(d2m.dbg_print_fn, d2m.dbg_print_opt, fmt, va);
 		}
 
 		return prnt(d2m.dbg_print_fn, d2m.dbg_print_opt, fmt, va);
@@ -623,16 +623,16 @@ sceDeci2ExWakeupThread(int s, int thid)
 		return DECI2_ERR_INVALSOCK;
 	}
 
-	if (sock->unk14 == 1 && sock->unk18 == thid) {
-		sock->unk1C++;
+	if (sock->wakepup_type == 1 && sock->wakeup_arg1 == thid) {
+		sock->wakeup_arg2++;
 	} else {
-		if (sock->unk14) {
+		if (sock->wakepup_type) {
 			return DECI2_ERR_INVALID;
 		}
 
-		sock->unk14 = 1;
-		sock->unk18 = thid;
-		sock->unk1C = 1;
+		sock->wakepup_type = 1;
+		sock->wakeup_arg1 = thid;
+		sock->wakeup_arg2 = 1;
 	}
 
 	if (d2m.isdbgp_sock) {
@@ -655,16 +655,16 @@ sceDeci2ExSignalSema(int s, int semid)
 		return DECI2_ERR_INVALSOCK;
 	}
 
-	if (sock->unk14 == 2 && sock->unk18 == semid) {
-		sock->unk1C++;
+	if (sock->wakepup_type == 2 && sock->wakeup_arg1 == semid) {
+		sock->wakeup_arg2++;
 	} else {
-		if (sock->unk14) {
+		if (sock->wakepup_type) {
 			return DECI2_ERR_INVALID;
 		}
 
-		sock->unk14 = 2;
-		sock->unk18 = semid;
-		sock->unk1C = 1;
+		sock->wakepup_type = 2;
+		sock->wakeup_arg1 = semid;
+		sock->wakeup_arg2 = 1;
 	}
 
 	if (d2m.isdbgp_sock) {
@@ -687,16 +687,16 @@ sceDeci2ExSetEventFlag(int s, int evfid, unsigned long bitpattern)
 		return DECI2_ERR_INVALSOCK;
 	}
 
-	if (sock->unk14 == 3 && sock->unk18 == evfid) {
-		sock->unk1C |= bitpattern;
+	if (sock->wakepup_type == 3 && sock->wakeup_arg1 == evfid) {
+		sock->wakeup_arg2 |= bitpattern;
 	} else {
-		if (sock->unk14) {
+		if (sock->wakepup_type) {
 			return DECI2_ERR_INVALID;
 		}
 
-		sock->unk14 = 3;
-		sock->unk18 = evfid;
-		sock->unk1C = bitpattern;
+		sock->wakepup_type = 3;
+		sock->wakeup_arg1 = evfid;
+		sock->wakeup_arg2 = bitpattern;
 	}
 
 	if (d2m.isdbgp_sock) {
@@ -716,24 +716,24 @@ func_0000121C(void *arg)
 	d2->unk4 &= ~2;
 
 	for (i = 0; i < MAX_SOCK; i++) {
-		if (d2->sock[i].handler && d2->sock[i].unk14 > 0) {
-			switch (d2->sock[i].unk14) {
+		if (d2->sock[i].handler && d2->sock[i].wakepup_type > 0) {
+			switch (d2->sock[i].wakepup_type) {
 			case 1:
-				for (j = 0; j < d2->sock[i].unk1C; j++) {
-					iWakeupThread(d2->sock[i].unk18);
+				for (j = 0; j < d2->sock[i].wakeup_arg2; j++) {
+					iWakeupThread(d2->sock[i].wakeup_arg1);
 				}
 				break;
 			case 2:
-				for (j = 0; j < d2->sock[i].unk1C; j++) {
-					iSignalSema(d2->sock[i].unk18);
+				for (j = 0; j < d2->sock[i].wakeup_arg2; j++) {
+					iSignalSema(d2->sock[i].wakeup_arg1);
 				}
 				break;
 			case 3:
-				iSetEventFlag(d2->sock[i].unk18, d2->sock[i].unk1C);
+				iSetEventFlag(d2->sock[i].wakeup_arg1, d2->sock[i].wakeup_arg2);
 				break;
 			}
 
-			d2->sock[i].unk14 = 0;
+			d2->sock[i].wakepup_type = 0;
 		}
 	}
 
@@ -841,7 +841,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 			}
 
 			iface->unk28 += len;
-			if (iface->rcv->unkC & 1) {
+			if (iface->rcv->ext_flags & 1) {
 				if ((d2m.debug_flag & 2) != 0) {
 					sceDeci2ExPanic("Send DECI2Ex_RflagDone event to socket=%d\n",
 					  iface->rcv - d2m.sock);
@@ -857,7 +857,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 				}
 
 				iface->rcv->handler(DECI2_READDONE, d2m.debug_flag, iface->rcv->opt);
-				iface->rcv->unk24 = 0;
+				iface->rcv->read_if = 0;
 				iface->rcv = NULL;
 				iface->handler(IFF_RCV_END, iface->opt, 0, 0);
 			}
@@ -892,7 +892,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 		if (iface->send) {
 			iface->unk18 += len;
 			if (len > 0) {
-				if (iface->send->unkC & 1) {
+				if (iface->send->ext_flags & 1) {
 					if (d2m.debug_flag & 2) {
 						sceDeci2ExPanic("Send DECI2Ex_WflagDone event to socket=%d\n",
 						  iface->send - d2m.sock);
@@ -946,8 +946,8 @@ func_00001BA0(int event, int param, void *opt)
 			rly->wpos = 0;
 			if (rly->flag & 2) {
 				rly->flag &= ~2;
-				sock->unk20->flags |= 2;
-				sock->unk20->handler(IFF_SEND_ON, sock->unk20->opt, 0, 0);
+				sock->send_if->flags |= 2;
+				sock->send_if->handler(IFF_SEND_ON, sock->send_if->opt, 0, 0);
 			}
 		}
 
@@ -955,7 +955,7 @@ func_00001BA0(int event, int param, void *opt)
 	case 8:
 		if (!rly->unk14 || (rly->unk18 < rly->unk14 && rly->rpos < 0x4000)) {
 			rly->flag |= 2;
-			sock->unk20->handler(IFF_SEND_OFF, sock->unk20->opt, 0, 0);
+			sock->send_if->handler(IFF_SEND_OFF, sock->send_if->opt, 0, 0);
 		}
 		break;
 	case 3:
@@ -971,7 +971,7 @@ func_00001BA0(int event, int param, void *opt)
 
 			if (rly->unk14 > rly->unk18) {
 				rly->flag |= 2;
-				sock->unk20->handler(IFF_SEND_OFF, sock->unk20->opt, 0, 0);
+				sock->send_if->handler(IFF_SEND_OFF, sock->send_if->opt, 0, 0);
 			}
 		}
 		break;
@@ -1066,13 +1066,13 @@ func_00001FC4(struct deci2_iface *src, struct deci2_iface *dst, int len, int pro
 	rly->wpos = 0;
 	rly->unk14 = 0;
 	rly->unk18 = 0;
-	rly->unk8 = protocol;
+	rly->protocol = protocol;
 	rly->unk10 = src;
 
 	sock->handler = func_00001BA0;
-	sock->unk20 = dst;
-	sock->unk10 = node;
-	sock->unk24 = src;
+	sock->send_if = dst;
+	sock->dst_node = node;
+	sock->read_if = src;
 	src->rcv = sock;
 
 	func_0000231C();
@@ -1099,7 +1099,7 @@ func_0000214C(struct deci2_iface *iface, int len, int protocol, int node, int a4
 	rly->unk18 = 0;
 
 	sock->handler = func_00001E20;
-	sock->unk24 = iface;
+	sock->read_if = iface;
 	iface->rcv = sock;
 }
 
@@ -1108,13 +1108,13 @@ func_00002234(struct deci2_iface *iface)
 {
 	struct deci2_socket *sock;
 
-	if (iface->send->unk20 != iface) {
-		sceDeci2ExPanic("interface_packet_send_done: 0x%x != 0x%x\n", iface->send->unk20, iface);
+	if (iface->send->send_if != iface) {
+		sceDeci2ExPanic("interface_packet_send_done: 0x%x != 0x%x\n", iface->send->send_if, iface);
 	}
 
 	sock = iface->send;
 
-	iface->send->unk20 = NULL;
+	iface->send->send_if = NULL;
 	iface->send = NULL;
 
 	iface->handler(IFF_SEND_END, iface->opt, 0, 0);
@@ -1148,7 +1148,7 @@ func_0000231C()
 				sock = &d2m.sock[d2m.lock_holder];
 			}
 
-			if (sock->unk20 == iface) {
+			if (sock->send_if == iface) {
 				iface->send = sock;
 				iface->unk14 = 0;
 				iface->unk18 = 0;
@@ -1159,7 +1159,7 @@ func_0000231C()
 					  iface - d2m.iface);
 				}
 
-				if (sock->unkC & 1) {
+				if (sock->ext_flags & 1) {
 					if (d2m.debug_flag & 2) {
 						sceDeci2ExPanic("Send DECI2Ex_WriteStart event to socket=%d\n",
 						  sock - d2m.sock);
@@ -1169,10 +1169,10 @@ func_0000231C()
 				}
 
 				if (sock->proto != -1) {
-					iface->handler(IFF_SEND_START, iface->opt, sock->proto, sock->unk10);
+					iface->handler(IFF_SEND_START, iface->opt, sock->proto, sock->dst_node);
 				} else {
 					struct deci2_relay *opt = sock->opt;
-					iface->handler(IFF_SEND_START, iface->opt, opt->unk8, sock->unk10);
+					iface->handler(IFF_SEND_START, iface->opt, opt->protocol, sock->dst_node);
 				}
 
 				break;
@@ -1244,7 +1244,7 @@ func_000025BC(struct deci2_iface *iface, int len, int protocol, int node)
 				d2m.unk4 |= 1;
 				func_0000214C(iface, len, protocol, node, 2);
 			} else {
-				sock->unk24 = iface;
+				sock->read_if = iface;
 				iface->rcv = sock;
 			}
 
