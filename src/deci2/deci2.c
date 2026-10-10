@@ -77,6 +77,7 @@ void func_00002A40();
 int func_00003760(); // should be in sdb header
 int func_000001F4(void *opt);
 int func_00000240(void *opt);
+void func_00001E20(int, int, void *);
 void func_00001FC4(struct deci2_iface *src, struct deci2_iface *dst, int len, int protocol,
   int node);
 void func_0000214C(struct deci2_iface *iface, int len, int protocol, int node, int unk);
@@ -86,6 +87,7 @@ void func_000025BC(struct deci2_iface *iface, int len, int protocol, int node);
 void func_00002904();
 void func_00002914();
 int func_00002A0C(int s);
+void func_00002B10(int, void *);
 void func_00002C08(int, int);
 
 int
@@ -984,13 +986,146 @@ func_00001BA0(int event, int param, void *opt)
 	}
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00001E20);
+void
+func_00001E20(int event, int param, void *opt)
+{
+	struct deci2_relay *rly = opt;
+	uint unk18;
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00001FC4);
+	switch (event) {
+	case 1:
+	case 2:
+		if (rly->flag & 0x20) {
+			func_00002B10(rly->unkC, rly->buf);
+			rly->flag &= ~0x20;
+		}
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_0000214C);
+		if (event == 2) {
+			rly->flag &= ~0x10;
+		}
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002234);
+		if (event != 1) {
+			return;
+		}
+
+		unk18 = rly->unk18;
+		if (unk18 < 0x18) {
+			if (d2m.debug_flag & 3) {
+				sceDeci2ExPanic("ErrorIn: read error packet header\n");
+			}
+
+			rly->unk18 += sceDeci2ExRecv(rly->sock, rly->buf + rly->unk18, 0x4000 - rly->unk18);
+
+		} else {
+			if (d2m.debug_flag & 3) {
+				sceDeci2ExPanic("ErrorIn: skip error packet\n");
+			}
+
+			rly->unk18 += sceDeci2ExRecv(rly->sock, rly->buf, 0x4000);
+		}
+
+		if (unk18 >= 0x18u) {
+			return;
+		}
+
+		if (rly->unk18 < 0x18u && rly->unk18 < rly->unk14) {
+			return;
+		}
+
+		rly->flag |= 0x20;
+		break;
+	case 7:
+		break;
+	default:
+		sceDeci2ExPanic("ErrorIn: unknown event 0x%x\n", event);
+		return;
+	}
+}
+
+void
+func_00001FC4(struct deci2_iface *src, struct deci2_iface *dst, int len, int protocol, int node)
+{
+	struct deci2_socket *sock;
+	struct deci2_relay *rly;
+
+	rly = &relay[src - d2m.iface];
+	sock = &d2m.sock[rly->sock];
+
+	if (rly->flag) {
+		sceDeci2ExPanic("relay_rcv_packet: flag = 0x%x\n", rly->flag);
+	}
+
+	if (d2m.debug_flag & 2) {
+		sceDeci2ExPanic("Relay start slot %d (sock=%d) %c->%c\n", src - d2m.iface, sock - d2m.sock,
+		  src->node, dst->node);
+	}
+
+	rly->flag = 1;
+	rly->unkC = 0;
+	rly->rpos = 0;
+	rly->wpos = 0;
+	rly->unk14 = 0;
+	rly->unk18 = 0;
+	rly->unk8 = protocol;
+	rly->unk10 = src;
+
+	sock->handler = func_00001BA0;
+	sock->unk20 = dst;
+	sock->unk10 = node;
+	sock->unk24 = src;
+	src->rcv = sock;
+
+	func_0000231C();
+}
+
+void
+func_0000214C(struct deci2_iface *iface, int len, int protocol, int node, int a4)
+{
+	struct deci2_socket *sock;
+	struct deci2_relay *rly;
+
+	rly = &relay[iface - d2m.iface];
+	sock = &d2m.sock[rly->sock];
+
+	if (rly->flag) {
+		sceDeci2ExPanic("error_rcv_packet: flag = 0x%x\n", rly->flag);
+	}
+
+	rly->flag = 0x10;
+	rly->unkC = a4;
+	rly->rpos = 0;
+	rly->wpos = 0;
+	rly->unk14 = 0;
+	rly->unk18 = 0;
+
+	sock->handler = func_00001E20;
+	sock->unk24 = iface;
+	iface->rcv = sock;
+}
+
+void
+func_00002234(struct deci2_iface *iface)
+{
+	struct deci2_socket *sock;
+
+	if (iface->send->unk20 != iface) {
+		sceDeci2ExPanic("interface_packet_send_done: 0x%x != 0x%x\n", iface->send->unk20, iface);
+	}
+
+	sock = iface->send;
+
+	iface->send->unk20 = NULL;
+	iface->send = NULL;
+
+	iface->handler(5, iface->opt, 0, 0);
+
+	if (d2m.debug_flag & 2) {
+		sceDeci2ExPanic("Send DECI2_WRITEDONE event to socket=%d\n", sock - d2m.sock);
+	}
+
+	sock->handler(4, 0, sock->opt);
+	func_0000231C();
+}
 
 void
 func_0000231C()
