@@ -1335,4 +1335,16 @@ func_00002914()
 	return 0;
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002A0C);
+int
+func_00002A0C(int s)
+{
+	int ret = 0;
+
+	if ((uint)s >= MAX_SOCK) {
+		ret = 0;
+	} else if (d2m.sock[s].handler) {
+		ret = 1;
+	}
+
+	return ret;
+}
