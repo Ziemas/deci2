@@ -42,12 +42,14 @@ segments:
       subsegments:
         # .text
         - [0x0, c, deci2]
+        - [0x2a40, c, dcmp]
         - [0x3680, asm, export_stub]
         - [0x3760, c, sdb]
 
         - [0x4ef0, hasm, exc]
         - [0x58e0, asm, ilb_stub]
         - [0x5aa0, .rodata, deci2]
+        - [0x6060, .rodata, dcmp]
         - [0x62c0, .rodata, sdb]
         - [0x6560, .data, deci2]
         - [0x65f0, data, sdb]

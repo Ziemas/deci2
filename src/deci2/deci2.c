@@ -85,7 +85,7 @@ void func_00002234(struct deci2_iface *iface);
 void func_0000231C();
 void func_000025BC(struct deci2_iface *iface, int len, int protocol, int node);
 void func_00002904();
-void func_00002914();
+int func_00002914();
 int func_00002A0C(int s);
 void func_00002B10(int, void *);
 void func_00002C08(int, int);
@@ -1306,34 +1306,33 @@ func_00002904()
 				   : "memory");
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002914);
+int
+func_00002914()
+{
+	struct deci2_iface *iface;
+	int i;
+
+	iface = d2m.iface;
+
+	if (d2m.debug_flag & 3) {
+		sceDeci2ExPanic("new_bind_poll()\n");
+	}
+
+	for (i = 0; i < MAX_INTERFACE; i++, iface++) {
+		if (iface->handler && iface->flags & 0x10) {
+			if (d2m.debug_flag & 3) {
+				sceDeci2ExPanic("  new_bind_poll() #%d\n", i);
+			}
+
+			iface->handler(6, iface->opt, 0, 0);
+		}
+	}
+
+	if (d2m.debug_flag & 3) {
+		sceDeci2ExPanic("new_bind_poll() end\n");
+	}
+
+	return 0;
+}
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002A0C);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002A40);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002A68);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002B10);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002C08);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002C9C);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002D14);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00003170);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_0000338C);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_000033E0);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_0000352C);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00003564);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_000035D4);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00003600);
-
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00003668);
