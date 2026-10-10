@@ -34,10 +34,10 @@ struct deci2_socket {
 };
 
 struct deci2_manager {
-	/* 0x000 */ int unk0;
+	/* 0x000 */ int lock_holder;
 	/* 0x004 */ int unk4;
 	/* 0x008 */ int unk8;
-	/* 0x00c */ int unkC;
+	/* 0x00c */ int debug_flag;
 	/* 0x010 */ void (*dbg_print_fn)(void *, int);
 	/* 0x014 */ void *dbg_print_opt;
 	/* 0x018 */ int (*poll_cb)();
@@ -162,7 +162,7 @@ func_00000240(void *opt)
 	struct deci2_manager *d2 = opt;
 
 	CpuEnableIntr();
-	if (!d2->unk0) {
+	if (!d2->lock_holder) {
 		ChangeThreadPriority(0, 126);
 		while (1) {
 			sceDeci2Poll();
@@ -208,7 +208,7 @@ sceDeci2SetDebugFormatRoutine(int (*fn)(const char *, va_list))
 void
 sceDeci2SetDebugFlags(u_int flags)
 {
-	d2m.unkC = flags;
+	d2m.debug_flag = flags;
 }
 
 int
@@ -238,7 +238,8 @@ func_00000360(u_short proto, void *opt, void (*handler)(int event, int param, vo
 			d2m.sock[i].opt = opt;
 
 			if (bootmode && *(u_short *)bootmode == 0) {
-				if (proto <= DECI2_PROTO_I0TTYP || proto >= DECI2_PROTO_I0TTYP + 9 || d2m.unkC) {
+				if (proto <= DECI2_PROTO_I0TTYP || proto >= DECI2_PROTO_I0TTYP + 9 ||
+				  d2m.debug_flag) {
 					sceDeci2ExPanic(" socket %2d proto=0x%x handler=0x%x opt=0x%x\n", i, proto,
 					  handler, opt);
 				}
@@ -355,7 +356,7 @@ sceDeci2ExReqSend(int s, char dest)
 			return DECI2_ERR_NOROUTE;
 		}
 
-		if (d2m.unkC & 2) {
+		if (d2m.debug_flag & 2) {
 			sceDeci2ExPanic("socket=%d point to if=%d (host route)\n", sock - d2m.sock,
 			  d2m.unk1C - d2m.iface);
 		}
@@ -373,7 +374,7 @@ sceDeci2ExReqSend(int s, char dest)
 				return DECI2_ERR_NOROUTE;
 			}
 
-			if (d2m.unkC & 2) {
+			if (d2m.debug_flag & 2) {
 				sceDeci2ExPanic("socket=%d point to if=%d\n", sock - d2m.sock, iface - d2m.iface);
 			}
 
@@ -452,7 +453,7 @@ sceDeci2ExSend(int s, void *buf, unsigned short len)
 int
 sceDeci2ExLock(int s)
 {
-	if (d2m.unk0) {
+	if (d2m.lock_holder) {
 		return DECI2_ERR_ALREADYLOCK;
 	}
 
@@ -461,7 +462,7 @@ sceDeci2ExLock(int s)
 	}
 
 	if (s > 2) {
-		d2m.unk0 = s;
+		d2m.lock_holder = s;
 		return 1;
 	}
 
@@ -471,7 +472,7 @@ sceDeci2ExLock(int s)
 int
 sceDeci2ExUnLock(int s)
 {
-	if (!d2m.unk0) {
+	if (!d2m.lock_holder) {
 		return DECI2_ERR_NOTLOCKED;
 	}
 
@@ -483,7 +484,7 @@ sceDeci2ExUnLock(int s)
 		func_00002C08(2, 0);
 	}
 
-	d2m.unk0 = 0;
+	d2m.lock_holder = 0;
 	d2m.unk4 &= ~1;
 	func_0000231C();
 	return 1;
@@ -587,7 +588,7 @@ sceDeci2DbgPrintStatus(void (*fn)(void *, int), void *opt)
 	}
 
 	sceDeci2ExPanic("\n\nDECI2 start d2manCB = 0x%x debugflag = 0x%x intrhandlers = 0x%x \n", &d2m,
-	  &d2m.unkC, &unk66F0);
+	  &d2m.debug_flag, &unk66F0);
 
 	for (i = 0; i < MAX_SOCK; i++) {
 		if (d2m.sock[i].handler) {
@@ -771,7 +772,7 @@ func_00001364(struct if_param *ifp)
 			}
 
 			iface = &d2m.iface[i];
-			iface->handler(11, iface->opt, d2m.unkC, 0);
+			iface->handler(11, iface->opt, d2m.debug_flag, 0);
 			return iface;
 		}
 	}
@@ -799,17 +800,17 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 
 	switch (event) {
 	case IFM_IN:
-		if (d2m.unkC & 3) {
+		if (d2m.debug_flag & 3) {
 			sceDeci2ExPanic("IFM_IN event from if driver %d\n", iface - d2m.iface);
 		}
 
 		if (!iface->rcv) {
 			func_000025BC(iface, len, protocol, node);
-			iface->handler(11, iface->opt, d2m.unkC, 0);
+			iface->handler(11, iface->opt, d2m.debug_flag, 0);
 			iface->handler(0, iface->opt, 0, 0);
 		}
 
-		if (d2m.unkC & 2) {
+		if (d2m.debug_flag & 2) {
 			sceDeci2ExPanic("Send DECI2_READ event to socket=%d\n", iface->rcv - d2m.sock);
 		}
 
@@ -818,7 +819,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 		iface->unk1C &= ~4;
 		break;
 	case IFM_INDONE:
-		if (d2m.unkC & 3) {
+		if (d2m.debug_flag & 3) {
 			sceDeci2ExPanic("IFM_INDONE event from if driver %d\n", iface - d2m.iface);
 		}
 
@@ -839,7 +840,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 
 			iface->unk28 += len;
 			if (iface->rcv->unkC & 1) {
-				if ((d2m.unkC & 2) != 0) {
+				if ((d2m.debug_flag & 2) != 0) {
 					sceDeci2ExPanic("Send DECI2Ex_RflagDone event to socket=%d\n",
 					  iface->rcv - d2m.sock);
 				}
@@ -848,12 +849,12 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 			}
 
 			if (iface->unk24 <= iface->unk28) {
-				if ((d2m.unkC & 2) != 0) {
+				if ((d2m.debug_flag & 2) != 0) {
 					sceDeci2ExPanic("Send DECI2_READDONE event to socket=%d\n",
 					  iface->rcv - d2m.sock);
 				}
 
-				iface->rcv->handler(2, d2m.unkC, iface->rcv->opt);
+				iface->rcv->handler(2, d2m.debug_flag, iface->rcv->opt);
 				iface->rcv->unk24 = 0;
 				iface->rcv = NULL;
 				iface->handler(2, iface->opt, 0, 0);
@@ -863,7 +864,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 		}
 		break;
 	case IFM_OUT:
-		if (d2m.unkC & 3) {
+		if (d2m.debug_flag & 3) {
 			sceDeci2ExPanic("IFM_OUT event from if driver %d\n", iface - d2m.iface);
 		}
 
@@ -871,7 +872,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 			iface->flags &= ~0x10;
 			iface->flags |= 0x8;
 
-			if (d2m.unkC & 2) {
+			if (d2m.debug_flag & 2) {
 				sceDeci2ExPanic("Send DECI2_WRITE event to socket=%d\n", iface->send - d2m.sock);
 			}
 
@@ -882,7 +883,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 		}
 		break;
 	case IFM_OUTDONE:
-		if (d2m.unkC & 3) {
+		if (d2m.debug_flag & 3) {
 			sceDeci2ExPanic("IFM_OUTDONE event from if driver %d\n", iface - d2m.iface);
 		}
 
@@ -890,7 +891,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 			iface->unk18 += len;
 			if (len > 0) {
 				if (iface->send->unkC & 1) {
-					if (d2m.unkC & 2) {
+					if (d2m.debug_flag & 2) {
 						sceDeci2ExPanic("Send DECI2Ex_WflagDone event to socket=%d\n",
 						  iface->send - d2m.sock);
 					}
@@ -991,7 +992,67 @@ INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_0000214C);
 
 INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_00002234);
 
-INCLUDE_ASM("asm/deci2/nonmatchings/deci2", func_0000231C);
+void
+func_0000231C()
+{
+	struct deci2_iface *iface;
+	struct deci2_socket *sock;
+	int i, s;
+
+	if (d2m.debug_flag & 2) {
+		sceDeci2ExPanic("bind_socket_interface()\n");
+	}
+
+	for (i = 0, iface = d2m.iface; i < MAX_INTERFACE; i++, iface++) {
+		if (iface->send) {
+			continue;
+		}
+
+		for (s = 0, sock = d2m.sock; s < MAX_SOCK; s++, sock++) {
+			if (d2m.lock_holder > 0 && s == 3) {
+				sock = &d2m.sock[d2m.lock_holder];
+			}
+
+			if (sock->unk20 == iface) {
+				iface->send = sock;
+				iface->unk14 = 0;
+				iface->unk18 = 0;
+				iface->flags |= 0x10;
+
+				if (d2m.debug_flag & 2) {
+					sceDeci2ExPanic("BIND socket=%d and if=%d\n", sock - d2m.sock,
+					  iface - d2m.iface);
+				}
+
+				if (sock->unkC & 1) {
+					if (d2m.debug_flag & 2) {
+						sceDeci2ExPanic("Send DECI2Ex_WriteStart event to socket=%d\n",
+						  sock - d2m.sock);
+					}
+
+					sock->handler(8, 0, sock->opt);
+				}
+
+				if (sock->proto != -1) {
+					iface->handler(3, iface->opt, sock->proto, sock->unk10);
+				} else {
+					struct deci2_relay *opt = sock->opt;
+					iface->handler(3, iface->opt, opt->unk8, sock->unk10);
+				}
+
+				break;
+			}
+
+			if (d2m.lock_holder > 0 && s == 3) {
+				break;
+			}
+		}
+	}
+
+	if (d2m.debug_flag & 2) {
+		sceDeci2ExPanic("bind_socket_interface() end\n");
+	}
+}
 
 void
 func_000025BC(struct deci2_iface *iface, int len, int protocol, int node)
@@ -1026,7 +1087,7 @@ func_000025BC(struct deci2_iface *iface, int len, int protocol, int node)
 		if (i < MAX_INTERFACE && iface->flags & 1) {
 			func_00001FC4(iface, &d2m.iface[i], len, protocol, node);
 		} else {
-			if (d2m.unkC & 3) {
+			if (d2m.debug_flag & 3) {
 				sceDeci2ExPanic("deliver_rcv_packet: no route error prot=%d dest=%c\n", protocol,
 				  node);
 			}
@@ -1044,7 +1105,7 @@ func_000025BC(struct deci2_iface *iface, int len, int protocol, int node)
 		}
 
 		if (i < MAX_SOCK) {
-			if (d2m.unk0 && i != d2m.unk0) {
+			if (d2m.lock_holder && i != d2m.lock_holder) {
 				d2m.unk4 |= 1;
 				func_0000214C(iface, len, protocol, node, 2);
 			} else {
