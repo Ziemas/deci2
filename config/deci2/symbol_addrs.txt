@@ -67,5 +67,6 @@ iSetEventFlag = 0x5a68; // type:func
 iSignalSema = 0x5a8c; // type:func
 
 d2m = 0x6700; // size:0x608
+dcmp = 0xed60; // size:0x124
 unk66F0 = 0x66f0; // size:0x8
 relay = 0x6d10; // size:0x8048

@@ -79,7 +79,7 @@ struct deci2_manager {
 	/* 0x010 */ void (*dbg_print_fn)(void *, int);
 	/* 0x014 */ void *dbg_print_opt;
 	/* 0x018 */ int (*poll_cb)();
-	/* 0x01C */ struct deci2_iface *unk1C;
+	/* 0x01C */ struct deci2_iface *host_route;
 	/* 0x020 */ struct deci2_iface *host_if;
 	/* 0x024 */ int isdbgp_sock;
 	/* 0x028 */ struct deci2_socket sock[MAX_SOCK];

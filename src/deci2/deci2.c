@@ -94,7 +94,7 @@ start()
 		relay[i].sock = i + 1;
 	}
 
-	bm[0] = 0x10002;
+	bm[0] = BOOTMODE(1, 0, 2);
 	bm[1] = 0;
 	RegisterBootMode(bm);
 
@@ -316,7 +316,7 @@ sceDeci2ExReqSend(int s, char dest)
 	}
 
 	if (dest == DECI2_NODE_HOST) {
-		if (!d2m.unk1C) {
+		if (!d2m.host_route) {
 			if (!d2m.host_if) {
 				return DECI2_ERR_NOHOSTIF;
 			}
@@ -326,10 +326,10 @@ sceDeci2ExReqSend(int s, char dest)
 
 		if (d2m.debug_flag & 2) {
 			sceDeci2ExPanic("socket=%d point to if=%d (host route)\n", sock - d2m.sock,
-			  d2m.unk1C - d2m.iface);
+			  d2m.host_route - d2m.iface);
 		}
 
-		sock->send_if = d2m.unk1C;
+		sock->send_if = d2m.host_route;
 		sock->dst_node = DECI2_NODE_HOST;
 		bind_socket_interface();
 		return 1;
@@ -713,7 +713,6 @@ struct if_param {
 	void *interrupt;
 };
 
-// sceDeci2ExIfCreate
 struct deci2_iface *
 sceDeci2ExIfCreate(struct if_param *ifp)
 {
@@ -1168,10 +1167,10 @@ deliver_rcv_packet(struct deci2_iface *iface, int len, int protocol, int node)
 	iface->rcv_progress = 0;
 
 	if (node == DECI2_NODE_HOST) {
-		if (!d2m.unk1C) {
+		if (!d2m.host_route) {
 			error_rcv_packet(iface, len, protocol, node, DCMP_CODE_NOROUTE);
 		} else {
-			relay_rcv_packet(iface, d2m.unk1C, len, protocol, node);
+			relay_rcv_packet(iface, d2m.host_route, len, protocol, node);
 		}
 
 		return;

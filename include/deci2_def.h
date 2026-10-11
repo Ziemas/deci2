@@ -12,12 +12,41 @@
 #define DECI2_PROTO_EKTTYP 0x021f
 #define DECI2_PROTO_ESDBGP 0x0230
 
-struct sceDeci2Hdr {
+struct DECI2_HDR {
 	unsigned short len;
 	unsigned short rsvd;
 	unsigned short proto;
 	unsigned char src;
 	unsigned char dest;
+};
+
+struct DCMP_HDR {
+	unsigned char type;
+	unsigned char code;
+	short unsigned int unused;
+};
+
+struct DCMP_CONNECT_DATA {
+	unsigned char result;
+	unsigned char unused[3];
+};
+
+struct DCMP_BOOTP {
+	unsigned int param[4];
+};
+
+struct DCMP_ECHO_DATA {
+	short unsigned int id;
+	short unsigned int seq;
+};
+
+struct DCMP_STATUS_DATA {
+	short unsigned int proto;
+};
+
+struct DCMP_ERROR_DATA {
+	struct DECI2_HDR orig_hdr;
+	unsigned char orig_data[16];
 };
 
 #endif // DECI2_H_
