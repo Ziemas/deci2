@@ -81,7 +81,7 @@ void error_handler(int, int, void *);
 void relay_rcv_packet(struct deci2_iface *src, struct deci2_iface *dst, int len, int protocol,
   int node);
 void error_rcv_packet(struct deci2_iface *iface, int len, int protocol, int node, int unk);
-void interface_Packet_send_done(struct deci2_iface *iface);
+void interface_packet_send_done(struct deci2_iface *iface);
 void bind_socket_interface();
 void deliver_rcv_packet(struct deci2_iface *iface, int len, int protocol, int node);
 void func_00002904();
@@ -902,7 +902,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 			}
 
 			if (iface->send_len > 0 && iface->send_progress >= iface->send_len) {
-				interface_Packet_send_done(iface);
+				interface_packet_send_done(iface);
 			}
 		} else {
 			sceDeci2ExPanic("IFM_OUTDONE: Send Socket not found\n");
@@ -1105,7 +1105,7 @@ error_rcv_packet(struct deci2_iface *iface, int len, int protocol, int node, int
 }
 
 void
-interface_Packet_send_done(struct deci2_iface *iface)
+interface_packet_send_done(struct deci2_iface *iface)
 {
 	struct deci2_socket *sock;
 
