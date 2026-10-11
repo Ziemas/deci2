@@ -3,7 +3,8 @@
 
 #include "sys/types.h"
 
-struct deci2_socket;
+#define MAX_SOCK 35
+#define MAX_INTERFACE 2
 
 enum DECI2Ex {
 	DECI2Ex_RflagDone = 7,
@@ -42,6 +43,19 @@ enum IFFUNC {
 	IFF_SHUTDOWN = 12,
 };
 
+struct deci2_socket {
+	/* 0x000 */ void (*handler)(int, int, void *);
+	/* 0x004 */ void *opt;
+	/* 0x008 */ u_int proto;
+	/* 0x00c */ u_int ext_flags;
+	/* 0x010 */ u_int dst_node;
+	/* 0x014 */ int wakepup_type;
+	/* 0x018 */ u_int wakeup_arg1;
+	/* 0x01c */ u_int wakeup_arg2;
+	/* 0x020 */ struct deci2_iface *send_if;
+	/* 0x024 */ struct deci2_iface *read_if;
+};
+
 struct deci2_iface {
 	/* 0x0 */ int node;
 	/* 0x4 */ int (*handler)();
@@ -57,6 +71,24 @@ struct deci2_iface {
 	/* 0x2c */ void *rcv_buf;
 };
 
+struct deci2_manager {
+	/* 0x000 */ int lock_holder;
+	/* 0x004 */ int unk4;
+	/* 0x008 */ int unk8;
+	/* 0x00c */ int debug_flag;
+	/* 0x010 */ void (*dbg_print_fn)(void *, int);
+	/* 0x014 */ void *dbg_print_opt;
+	/* 0x018 */ int (*poll_cb)();
+	/* 0x01C */ struct deci2_iface *unk1C;
+	/* 0x020 */ struct deci2_iface *host_if;
+	/* 0x024 */ int isdbgp_sock;
+	/* 0x028 */ struct deci2_socket sock[MAX_SOCK];
+	/* 0x5a0 */ struct deci2_iface iface[MAX_INTERFACE];
+	/* 0x600 */ void **unk600;
+	/* 0x604 */ int (*dbg_print)();
+};
+
+struct deci2_manager *sceDeci2GetStatus();
 struct deci2_iface *sceDeci2IfCreate(short, void *, int (*)(), int (*)());
 void sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protocol, int node);
 void sceDeci2ExPoll();

@@ -1,4 +1,3 @@
-#include "common.h"
 #include "deci2_internal.h"
 #include "intrman_internal.h"
 #include "introld.h"
@@ -16,39 +15,6 @@
 #include <thread.h>
 
 ModuleInfo Module = { "Deci2_Manager", 0x105 };
-
-#define MAX_SOCK 35
-#define MAX_INTERFACE 2
-
-struct deci2_socket {
-	/* 0x000 */ void (*handler)(int, int, void *);
-	/* 0x004 */ void *opt;
-	/* 0x008 */ u_int proto;
-	/* 0x00c */ u_int ext_flags;
-	/* 0x010 */ u_int dst_node;
-	/* 0x014 */ int wakepup_type;
-	/* 0x018 */ u_int wakeup_arg1;
-	/* 0x01c */ u_int wakeup_arg2;
-	/* 0x020 */ struct deci2_iface *send_if;
-	/* 0x024 */ struct deci2_iface *read_if;
-};
-
-struct deci2_manager {
-	/* 0x000 */ int lock_holder;
-	/* 0x004 */ int unk4;
-	/* 0x008 */ int unk8;
-	/* 0x00c */ int debug_flag;
-	/* 0x010 */ void (*dbg_print_fn)(void *, int);
-	/* 0x014 */ void *dbg_print_opt;
-	/* 0x018 */ int (*poll_cb)();
-	/* 0x01C */ struct deci2_iface *unk1C;
-	/* 0x020 */ struct deci2_iface *unk20;
-	/* 0x024 */ int isdbgp_sock;
-	/* 0x028 */ struct deci2_socket sock[MAX_SOCK];
-	/* 0x5a0 */ struct deci2_iface iface[MAX_INTERFACE];
-	/* 0x600 */ void **unk600;
-	/* 0x604 */ int (*dbg_print)();
-};
 
 struct deci2_relay {
 	/* 0x00 */ int flag;
@@ -351,7 +317,7 @@ sceDeci2ExReqSend(int s, char dest)
 
 	if (dest == DECI2_NODE_HOST) {
 		if (!d2m.unk1C) {
-			if (!d2m.unk20) {
+			if (!d2m.host_if) {
 				return DECI2_ERR_NOHOSTIF;
 			}
 
@@ -759,7 +725,7 @@ sceDeci2ExIfCreate(struct if_param *ifp)
 		if (!d2m.iface[i].handler) {
 
 			if (ifp->node == DECI2_NODE_HOST) {
-				d2m.unk20 = &d2m.iface[i];
+				d2m.host_if = &d2m.iface[i];
 			}
 
 			d2m.iface[i].node = ifp->node;

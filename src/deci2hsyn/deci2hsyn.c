@@ -1,32 +1,17 @@
 #include "common.h"
+#include "deci2_internal.h"
 #include "loadcore_internal.h"
 
 #include <loadcore.h>
 
 ModuleInfo Module = { "Deci2_host_sync", 0x101 };
 
-/* TODO */
-struct Deci2Status {
-	int unk0;
-	int unk4;
-	int unk8;
-	int unkC;
-	int unk10;
-	int unk14;
-	int unk18;
-	int unk1C;
-	int unk20;
-};
-
-/* TODO */
-struct Deci2Status *sceDeci2GetStatus();
-
 int
 start()
 {
 	int *bootmode;
 
-	if (!sceDeci2GetStatus()->unk20) {
+	if (!sceDeci2GetStatus()->host_if) {
 		return 1;
 	}
 
