@@ -54,10 +54,10 @@ struct deci2_relay {
 	/* 0x00 */ int flag;
 	/* 0x04 */ int sock;
 	/* 0x08 */ int protocol;
-	/* 0x0c */ int unkC;
-	/* 0x10 */ struct deci2_iface *unk10;
-	/* 0x14 */ int unk14;
-	/* 0x18 */ int unk18;
+	/* 0x0c */ int error;
+	/* 0x10 */ struct deci2_iface *rcv_if;
+	/* 0x14 */ int pkt_len;
+	/* 0x18 */ int progress;
 	/* 0x1c */ int rpos;
 	/* 0x20 */ int wpos;
 	/* 0x24 */ char buf[0x4000];
@@ -220,12 +220,12 @@ sceDeci2ExOpen(u_short proto, void *opt, void (*handler)(int event, int param, v
 	int i;
 
 	if (proto == 0 || proto >= 0xf000) {
-		return -1;
+		return DECI2_ERR_INVALID;
 	}
 
 	for (i = 0; i < MAX_SOCK; i++) {
 		if (d2m.sock[i].proto == proto) {
-			return -3;
+			return DECI2_ERR_ALREADYUSE;
 		}
 	}
 
@@ -259,7 +259,7 @@ sceDeci2ExOpen(u_short proto, void *opt, void (*handler)(int event, int param, v
 		}
 	}
 
-	return -4;
+	return DECI2_ERR_MFILE;
 }
 
 int
@@ -272,11 +272,11 @@ int
 sceDeci2ExClose(int s)
 {
 	if (!valid_socket(s) || s < 3) {
-		return -2;
+		return DECI2_ERR_INVALSOCK;
 	}
 
 	if (!d2m.sock[s].handler) {
-		return -2;
+		return DECI2_ERR_INVALSOCK;
 	}
 
 	d2m.sock[s].proto = -1;
@@ -305,28 +305,28 @@ sceDeci2ExRecv(int s, void *buf, u_short len)
 	struct deci2_iface *iface;
 
 	if (!valid_socket(s)) {
-		return -2;
+		return DECI2_ERR_INVALSOCK;
 	}
 
 	iface = d2m.sock[s].read_if;
 	if (!iface) {
-		return -7;
+		return DECI2_ERR_WOULDBLOCK;
 	}
 
-	if (!(iface->unk1C & 4)) {
-		return -7;
+	if (!(iface->rcv_state & 4)) {
+		return DECI2_ERR_WOULDBLOCK;
 	}
 
 	if ((u_int)buf & 3) {
-		return -5;
+		return DECI2_ERR_INVALADDR;
 	}
 
-	if (!iface->unk24) {
+	if (!iface->rcv_len) {
 		if (len < 8) {
-			return -6;
+			return DECI2_ERR_PKTSIZE;
 		}
 
-		iface->unk2C = buf;
+		iface->rcv_buf = buf;
 	}
 
 	return iface->handler(IFF_RCV_READ, iface->opt, buf, len);
@@ -441,12 +441,12 @@ sceDeci2ExSend(int s, void *buf, unsigned short len)
 		return DECI2_ERR_INVALADDR;
 	}
 
-	if (!iface->unk14) {
+	if (!iface->send_len) {
 		if (len < 8) {
 			return DECI2_ERR_PKTSIZE;
 		}
 
-		iface->unk14 = *(u_short *)buf;
+		iface->send_len = ((sceDeci2Hdr *)buf)->len;
 	}
 
 	return iface->handler(IFF_SEND_WRITE, iface->opt, buf, len);
@@ -531,7 +531,7 @@ sceDeci2ExRecvUnSuspend(int s)
 	}
 
 	if (sock->read_if) {
-		sock->read_if->unk1C |= 2;
+		sock->read_if->rcv_state |= 2;
 		sock->read_if->handler(IFF_RCV_ON, sock->read_if->opt, 0, 0);
 		return 1;
 	}
@@ -816,9 +816,9 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 			sceDeci2ExPanic("Send DECI2_READ event to socket=%d\n", iface->rcv - d2m.sock);
 		}
 
-		iface->unk1C |= 4;
+		iface->rcv_state |= 4;
 		iface->rcv->handler(DECI2_READ, len, iface->rcv->opt);
-		iface->unk1C &= ~4;
+		iface->rcv_state &= ~4;
 		break;
 	case IFM_INDONE:
 		if (d2m.debug_flag & 3) {
@@ -826,21 +826,20 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 		}
 
 		if (iface->rcv) {
-			if (!iface->unk24) {
-				// len from header?
-				iface->unk24 = *(u_short *)iface->unk2C;
+			if (!iface->rcv_len) {
+				iface->rcv_len = ((sceDeci2Hdr *)iface->rcv_buf)->len;
 			}
 
-			if (iface->unk24 < iface->unk28 + len) {
-				if (iface->unk24 + 3 < iface->unk28 + len) {
+			if (iface->rcv_len < iface->rcv_progress + len) {
+				if (iface->rcv_len + 3 < iface->rcv_progress + len) {
 					sceDeci2ExPanic("IFM_INDONE: Recieve packet too large %d>%d\n",
-					  iface->unk28 + len, iface->unk24);
+					  iface->rcv_progress + len, iface->rcv_len);
 				}
 
-				len = iface->unk24 - iface->unk28;
+				len = iface->rcv_len - iface->rcv_progress;
 			}
 
-			iface->unk28 += len;
+			iface->rcv_progress += len;
 			if (iface->rcv->ext_flags & 1) {
 				if ((d2m.debug_flag & 2) != 0) {
 					sceDeci2ExPanic("Send DECI2Ex_RflagDone event to socket=%d\n",
@@ -850,7 +849,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 				iface->rcv->handler(DECI2Ex_RflagDone, len, iface->rcv->opt);
 			}
 
-			if (iface->unk24 <= iface->unk28) {
+			if (iface->rcv_len <= iface->rcv_progress) {
 				if ((d2m.debug_flag & 2) != 0) {
 					sceDeci2ExPanic("Send DECI2_READDONE event to socket=%d\n",
 					  iface->rcv - d2m.sock);
@@ -890,7 +889,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 		}
 
 		if (iface->send) {
-			iface->unk18 += len;
+			iface->send_progress += len;
 			if (len > 0) {
 				if (iface->send->ext_flags & 1) {
 					if (d2m.debug_flag & 2) {
@@ -902,7 +901,7 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 				}
 			}
 
-			if (iface->unk14 > 0 && iface->unk18 >= iface->unk14) {
+			if (iface->send_len > 0 && iface->send_progress >= iface->send_len) {
 				interface_Packet_send_done(iface);
 			}
 		} else {
@@ -931,18 +930,18 @@ relay_handler(int event, int param, void *opt)
 	struct deci2_socket *sock = &d2m.sock[rly->sock];
 
 	switch (event) {
-	case 1:
+	case DECI2_READ:
 		sceDeci2ExRecv(rly->sock, &rly->buf[rly->rpos], 0x4000 - rly->rpos);
 		break;
-	case 7:
-		if (!rly->unk14) {
-			rly->unk14 = *(u_short *)rly->buf;
+	case DECI2Ex_RflagDone:
+		if (!rly->pkt_len) {
+			rly->pkt_len = *(u_short *)rly->buf;
 		}
 
 		rly->rpos += param;
-		rly->unk18 += param;
-		if (rly->unk18 >= rly->unk14 || rly->rpos >= 0x4000) {
-			rly->unk10->handler(IFF_RCV_OFF, rly->unk10->opt, 0, 0);
+		rly->progress += param;
+		if (rly->progress >= rly->pkt_len || rly->rpos >= 0x4000) {
+			rly->rcv_if->handler(IFF_RCV_OFF, rly->rcv_if->opt, 0, 0);
 			rly->flag |= 4;
 			rly->wpos = 0;
 			if (rly->flag & 2) {
@@ -953,33 +952,33 @@ relay_handler(int event, int param, void *opt)
 		}
 
 		break;
-	case 8:
-		if (!rly->unk14 || (rly->unk18 < rly->unk14 && rly->rpos < 0x4000)) {
+	case DECI2Ex_WriteStart:
+		if (!rly->pkt_len || (rly->progress < rly->pkt_len && rly->rpos < 0x4000)) {
 			rly->flag |= 2;
 			sock->send_if->handler(IFF_SEND_OFF, sock->send_if->opt, 0, 0);
 		}
 		break;
-	case 3:
+	case DECI2_WRITE:
 		sceDeci2ExSend(rly->sock, &rly->buf[rly->wpos], rly->rpos - rly->wpos);
 		break;
-	case 9:
+	case DECI2Ex_WflagDone:
 		rly->wpos += param;
 		if (rly->wpos >= rly->rpos) {
 			rly->rpos = 0;
 			rly->flag &= ~4;
-			rly->unk10->unk1C |= 2;
-			rly->unk10->handler(IFF_RCV_ON, rly->unk10->opt, 0, 0);
+			rly->rcv_if->rcv_state |= 2;
+			rly->rcv_if->handler(IFF_RCV_ON, rly->rcv_if->opt, 0, 0);
 
-			if (rly->unk14 > rly->unk18) {
+			if (rly->pkt_len > rly->progress) {
 				rly->flag |= 2;
 				sock->send_if->handler(IFF_SEND_OFF, sock->send_if->opt, 0, 0);
 			}
 		}
 		break;
-	case 4:
+	case DECI2_WRITEDONE:
 		rly->flag &= ~1;
 		break;
-	case 2:
+	case DECI2_READDONE:
 		break;
 	default:
 		sceDeci2ExPanic("RelayInOut: unknown event 0x%x\n", event);
@@ -994,48 +993,49 @@ error_handler(int event, int param, void *opt)
 	uint unk18;
 
 	switch (event) {
-	case 1:
-	case 2:
+	case DECI2_READ:
+	case DECI2_READDONE:
 		if (rly->flag & 0x20) {
-			func_00002B10(rly->unkC, rly->buf);
+			func_00002B10(rly->error, rly->buf);
 			rly->flag &= ~0x20;
 		}
 
-		if (event == 2) {
+		if (event == DECI2_READDONE) {
 			rly->flag &= ~0x10;
 		}
 
-		if (event != 1) {
+		if (event != DECI2_READ) {
 			return;
 		}
 
-		unk18 = rly->unk18;
+		unk18 = rly->progress;
 		if (unk18 < 0x18) {
 			if (d2m.debug_flag & 3) {
 				sceDeci2ExPanic("ErrorIn: read error packet header\n");
 			}
 
-			rly->unk18 += sceDeci2ExRecv(rly->sock, rly->buf + rly->unk18, 0x4000 - rly->unk18);
+			rly->progress += sceDeci2ExRecv(rly->sock, rly->buf + rly->progress,
+			  0x4000 - rly->progress);
 
 		} else {
 			if (d2m.debug_flag & 3) {
 				sceDeci2ExPanic("ErrorIn: skip error packet\n");
 			}
 
-			rly->unk18 += sceDeci2ExRecv(rly->sock, rly->buf, 0x4000);
+			rly->progress += sceDeci2ExRecv(rly->sock, rly->buf, 0x4000);
 		}
 
 		if (unk18 >= 0x18u) {
 			return;
 		}
 
-		if (rly->unk18 < 0x18u && rly->unk18 < rly->unk14) {
+		if (rly->progress < 0x18u && rly->progress < rly->pkt_len) {
 			return;
 		}
 
 		rly->flag |= 0x20;
 		break;
-	case 7:
+	case DECI2Ex_RflagDone:
 		break;
 	default:
 		sceDeci2ExPanic("ErrorIn: unknown event 0x%x\n", event);
@@ -1062,13 +1062,13 @@ relay_rcv_packet(struct deci2_iface *src, struct deci2_iface *dst, int len, int 
 	}
 
 	rly->flag = 1;
-	rly->unkC = 0;
+	rly->error = 0;
 	rly->rpos = 0;
 	rly->wpos = 0;
-	rly->unk14 = 0;
-	rly->unk18 = 0;
+	rly->pkt_len = 0;
+	rly->progress = 0;
 	rly->protocol = protocol;
-	rly->unk10 = src;
+	rly->rcv_if = src;
 
 	sock->handler = relay_handler;
 	sock->send_if = dst;
@@ -1080,7 +1080,7 @@ relay_rcv_packet(struct deci2_iface *src, struct deci2_iface *dst, int len, int 
 }
 
 void
-error_rcv_packet(struct deci2_iface *iface, int len, int protocol, int node, int a4)
+error_rcv_packet(struct deci2_iface *iface, int len, int protocol, int node, int error)
 {
 	struct deci2_socket *sock;
 	struct deci2_relay *rly;
@@ -1093,11 +1093,11 @@ error_rcv_packet(struct deci2_iface *iface, int len, int protocol, int node, int
 	}
 
 	rly->flag = 0x10;
-	rly->unkC = a4;
+	rly->error = error;
 	rly->rpos = 0;
 	rly->wpos = 0;
-	rly->unk14 = 0;
-	rly->unk18 = 0;
+	rly->pkt_len = 0;
+	rly->progress = 0;
 
 	sock->handler = error_handler;
 	sock->read_if = iface;
@@ -1151,8 +1151,8 @@ bind_socket_interface()
 
 			if (sock->send_if == iface) {
 				iface->send = sock;
-				iface->unk14 = 0;
-				iface->unk18 = 0;
+				iface->send_len = 0;
+				iface->send_progress = 0;
 				iface->flags |= 0x10;
 
 				if (d2m.debug_flag & 2) {
@@ -1198,12 +1198,12 @@ deliver_rcv_packet(struct deci2_iface *iface, int len, int protocol, int node)
 		return;
 	}
 
-	iface->unk24 = 0;
-	iface->unk28 = 0;
+	iface->rcv_len = 0;
+	iface->rcv_progress = 0;
 
 	if (node == DECI2_NODE_HOST) {
 		if (!d2m.unk1C) {
-			error_rcv_packet(iface, len, protocol, node, 0);
+			error_rcv_packet(iface, len, protocol, node, DCMP_CODE_NOROUTE);
 		} else {
 			relay_rcv_packet(iface, d2m.unk1C, len, protocol, node);
 		}
@@ -1228,7 +1228,7 @@ deliver_rcv_packet(struct deci2_iface *iface, int len, int protocol, int node)
 				  node);
 			}
 
-			error_rcv_packet(iface, len, protocol, node, 0);
+			error_rcv_packet(iface, len, protocol, node, DCMP_CODE_NOROUTE);
 		}
 	} else {
 		struct deci2_socket *sock;
@@ -1243,14 +1243,13 @@ deliver_rcv_packet(struct deci2_iface *iface, int len, int protocol, int node)
 		if (i < MAX_SOCK) {
 			if (d2m.lock_holder && i != d2m.lock_holder) {
 				d2m.unk4 |= 1;
-				error_rcv_packet(iface, len, protocol, node, 2);
+				error_rcv_packet(iface, len, protocol, node, DCMP_CODE_LOCKED);
 			} else {
 				sock->read_if = iface;
 				iface->rcv = sock;
 			}
-
 		} else {
-			error_rcv_packet(iface, len, protocol, node, 1);
+			error_rcv_packet(iface, len, protocol, node, DCMP_CODE_NOPROTO);
 		}
 	}
 }
@@ -1276,10 +1275,10 @@ sceDeci2ExPoll()
 
 		iface = d2m.iface;
 		for (i = 0; i < MAX_INTERFACE; i++) {
-			if (iface->flags & 2 || iface->unk1C & 2) {
+			if (iface->flags & 2 || iface->rcv_state & 2) {
 				again = 1;
 				iface->flags &= ~2;
-				iface->unk1C &= ~2;
+				iface->rcv_state &= ~2;
 			}
 
 			iface++;

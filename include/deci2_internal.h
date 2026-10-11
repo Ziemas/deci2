@@ -48,13 +48,13 @@ struct deci2_iface {
 	/* 0x8 */ void *opt;
 	/* 0xc */ int flags;
 	/* 0x10 */ struct deci2_socket *send;
-	/* 0x14 */ int unk14;
-	/* 0x18 */ int unk18;
-	/* 0x1c */ int unk1C;
+	/* 0x14 */ int send_len;
+	/* 0x18 */ int send_progress;
+	/* 0x1c */ int rcv_state;
 	/* 0x20 */ struct deci2_socket *rcv;
-	/* 0x24 */ int unk24;
-	/* 0x28 */ int unk28;
-	/* 0x2c */ void *unk2C;
+	/* 0x24 */ int rcv_len;
+	/* 0x28 */ int rcv_progress;
+	/* 0x2c */ void *rcv_buf;
 };
 
 struct deci2_iface *sceDeci2IfCreate(short, void *, int (*)(), int (*)());
