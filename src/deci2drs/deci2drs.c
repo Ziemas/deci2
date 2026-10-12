@@ -21,16 +21,20 @@ struct drv_sif {
 	struct deci2_iface *iface;
 	int flag;
 	int debug;
-	int unkC; // current protocol
-	int unk10;
-	int unk14; // current transfer size
-	int unk18;
-	int unk1C;
-	void *unk20;
-	int unk24;
-	int unk28;
-	int unk2C;
-	int unk30;
+
+	// What the EE is sending us
+	int in_proto;
+	int in_node;
+	int in_len;
+
+	int rcv_progress;
+	int rcv_len;
+	void *rcv_buf;
+
+	int send_proto;
+	int send_node;
+	int send_len;
+	void *send_buf;
 };
 
 struct drv_sif sifdrv;
@@ -136,7 +140,7 @@ func_00000184(struct drv_sif *drv)
 		sceDeci2ExPanic("\t\tsif2 read msflag for rcv %x\n", msflag);
 	}
 
-	if (!(drv->flag & 0x202) && (msflag & 0x80000000)) {
+	if (!(drv->flag & (0x200 | 0x2)) && (msflag & 0x80000000)) {
 		spec = D_A00003E0;
 		/*
 		 * First write of transfer?
@@ -155,7 +159,7 @@ func_00000184(struct drv_sif *drv)
 			sceDeci2ExPanic("\t\tsif2 read spec %x and DECI2_ACCEPT\n", D_A00003E0);
 		}
 
-		drv->unkC = spec >> 16;
+		drv->in_proto = spec >> 16;
 		if (spec & 0x8000) {
 			size = (spec & 0x7fff);
 			if (size) {
@@ -164,9 +168,9 @@ func_00000184(struct drv_sif *drv)
 				size = 0x20000;
 			}
 
-			drv->unk14 = size;
+			drv->in_len = size;
 		} else {
-			drv->unk10 = (spec >> 8) & 0x7f;
+			drv->in_node = (spec >> 8) & 0x7f;
 			size = (spec & 0xff);
 			if (size) {
 				size *= 4;
@@ -174,11 +178,11 @@ func_00000184(struct drv_sif *drv)
 				size = 0x400;
 			}
 
-			drv->unk14 = size;
+			drv->in_len = size;
 		}
 
-		drv->unk18 = 0;
-		drv->flag = (drv->flag | 0x2200) & ~0x8000;
+		drv->rcv_progress = 0;
+		drv->flag = (drv->flag | (0x2000 | 0x200)) & ~0x8000;
 		sceSifSetMSflg(0x80000000);
 		sceSifSetSMflg(0x40000000);
 		sceSifIntrOther();
@@ -200,14 +204,14 @@ func_000002B4(struct drv_sif *drv)
 		sceDeci2ExPanic("\t\tsif2 read msflag for send %x\n", msflag);
 	}
 
-	if (!(drv->flag & 0x202) && (msflag & 0x40000000)) {
+	if (!(drv->flag & (0x200 | 0x2)) && (msflag & 0x40000000)) {
 		drv->flag |= 2;
 		sceSifSetMSflg(0x40000000);
 		if ((drv->debug & 0x800)) {
-			sceDeci2ExPanic("\t\tsif2 send dma start addr=%x, size=%x\n", drv->unk30, drv->unk2C);
+			sceDeci2ExPanic("\t\tsif2 send dma start addr=%x, size=%x\n", drv->send_buf, drv->send_len);
 		}
 		EnableIntr(34);
-		sceSifDma2Transfer((void *)drv->unk30, drv->unk2C, 1);
+		sceSifDma2Transfer(drv->send_buf, drv->send_len, 1);
 	}
 }
 
@@ -230,18 +234,18 @@ func_000003F4(struct drv_sif *drv)
 	if (drv->flag & 2) {
 		if (drv->debug & 0x800) {
 			sceDeci2ExPanic("\t\tsif2 send dma end %08x %08x %08x %08x ...\n",
-			  ((uint *)drv->unk30)[0], ((uint *)drv->unk30)[1], ((uint *)drv->unk30)[2],
-			  ((uint *)drv->unk30)[3]);
+			  ((uint *)drv->send_buf)[0], ((uint *)drv->send_buf)[1], ((uint *)drv->send_buf)[2],
+			  ((uint *)drv->send_buf)[3]);
 		}
 		drv->flag = (drv->flag & ~0x2) | 0x40;
 	} else if (drv->flag & 0x200) {
 		if (drv->debug & 0x81c) {
 			sceDeci2ExPanic("\t\tsif2 rcv dma end %08x %08x %08x %08x ...\n",
-			  ((uint *)drv->unk20)[0], ((uint *)drv->unk20)[1], ((uint *)drv->unk20)[2],
-			  ((uint *)drv->unk20)[3]);
+			  ((uint *)drv->rcv_buf)[0], ((uint *)drv->rcv_buf)[1], ((uint *)drv->rcv_buf)[2],
+			  ((uint *)drv->rcv_buf)[3]);
 		}
 
-		drv->unk18 += drv->unk1C;
+		drv->rcv_progress += drv->rcv_len;
 		drv->flag |= 0x4000;
 		if (sceSifGetSMflg() & 0x80000000) {
 			sceSifIntrOther();
@@ -262,14 +266,14 @@ func_00000518(struct drv_sif *drv)
 		if (drv->flag & 0x40) {
 			again = 1;
 			drv->flag = drv->flag & ~0x40;
-			sceDeci2IfEventHandler(IFM_OUTDONE, drv->iface, drv->unk2C, 0, 0);
+			sceDeci2IfEventHandler(IFM_OUTDONE, drv->iface, drv->send_len, 0, 0);
 			if (drv->flag & 1) {
 				drv->flag |= 0x20;
 			}
 		}
 
-		if (!(drv->flag & 0x210)) {
-			if ((drv->flag & 0x21) == 0x21) {
+		if (!(drv->flag & (0x200 | 0x10))) {
+			if ((drv->flag & (0x20 | 0x1)) == (0x20 | 0x1)) {
 				again = 1;
 				drv->flag &= ~0x20;
 				sceDeci2IfEventHandler(IFM_OUT, drv->iface, 0, 0, 0);
@@ -279,21 +283,21 @@ func_00000518(struct drv_sif *drv)
 		if (drv->flag & 0x4000) {
 			again = 1;
 			drv->flag &= ~0x4000;
-			if (drv->unk14 <= drv->unk18) {
+			if (drv->in_len <= drv->rcv_progress) {
 				drv->flag &= ~0x200;
 			} else {
 				drv->flag |= 0x2000;
 			}
 
-			sceDeci2IfEventHandler(IFM_INDONE, drv->iface, drv->unk1C, 0, 0);
+			sceDeci2IfEventHandler(IFM_INDONE, drv->iface, drv->rcv_len, 0, 0);
 		}
 
 		if (!(drv->flag & 0x1000)) {
 			if (drv->flag & 0x2000) {
 				again = 1;
 				drv->flag &= ~0x2000;
-				sceDeci2IfEventHandler(IFM_IN, drv->iface, drv->unk14 - drv->unk18, drv->unkC,
-				  drv->unk10);
+				sceDeci2IfEventHandler(IFM_IN, drv->iface, drv->in_len - drv->rcv_progress, drv->in_proto,
+				  drv->in_node);
 			}
 		}
 	} while (again);
@@ -323,8 +327,8 @@ drs_rcv_read(struct drv_sif *drv, int arg1, int arg2)
 
 	size = (size + 3) & ~3;
 
-	if (drv->unk14 - drv->unk18 < size) {
-		size = drv->unk14 - drv->unk18;
+	if (drv->in_len - drv->rcv_progress < size) {
+		size = drv->in_len - drv->rcv_progress;
 	}
 
 	if (size <= 0) {
@@ -335,8 +339,8 @@ drs_rcv_read(struct drv_sif *drv, int arg1, int arg2)
 		sceDeci2ExPanic("\t\tsif2 rcv dma start %d byte\n", size);
 	}
 
-	drv->unk1C = size;
-	drv->unk20 = ptr;
+	drv->rcv_len = size;
+	drv->rcv_buf = ptr;
 	EnableIntr(34);
 	sceSifDma2Transfer(ptr, size, 16);
 
@@ -359,8 +363,8 @@ int
 drs_send_start(struct drv_sif *drv, int a2, int a3)
 {
 	drv->flag |= 0x25;
-	drv->unk24 = a2;
-	drv->unk28 = a3;
+	drv->send_proto = a2;
+	drv->send_node = a3;
 	if (drv->debug & 0x400) {
 		sceDeci2ExPanic("\t\tsif2 packet send start flag = %x\n", drv->flag);
 	}
@@ -371,40 +375,36 @@ drs_send_start(struct drv_sif *drv, int a2, int a3)
 int
 drs_send_write(struct drv_sif *drv, int arg1, int arg2)
 {
-	int s0 = drv->unk24 << 0x10;
+	int spec = drv->send_proto << 0x10;
 
 	if (drv->flag & 0x4) {
-		int v0;
 		drv->flag &= ~0x4;
 
 		if (arg2 > 0x400) {
 			arg2 = 0x400;
 		}
 
-		s0 |= (drv->unk28 & 0x7f) << 0x8;
-		v0 = (arg2 + 3) / 4;
-		s0 |= (v0 & 0xff);
+		spec |= (drv->send_node & 0x7f) << 0x8;
+		spec |= ((arg2 + 3) / 4 & 0xff);
 	} else {
-		int v0_;
 		if (arg2 > 0x20000) {
 			arg2 = 0x20000;
 		}
 
-		v0_ = (arg2 + 3) / 4;
-		s0 |= (v0_ & 0x7fff);
-		s0 |= 0x8000;
+		spec |= ((arg2 + 3) / 4 & 0x7fff);
+		spec |= 0x8000;
 	}
 
 	if (drv->debug & 0x800) {
-		sceDeci2ExPanic("\t\tsif2 write spec %x and DECI2_START\n", s0);
+		sceDeci2ExPanic("\t\tsif2 write spec %x and DECI2_START\n", spec);
 	}
 
-	D_A00003E4 = s0;
+	D_A00003E4 = spec;
 	sceSifSetSMflg(0x80000000);
 	sceSifIntrOther();
 
-	drv->unk30 = arg1;
-	drv->unk2C = arg2;
+	drv->send_buf = (void *)arg1;
+	drv->send_len = arg2;
 	return arg2;
 }
 
@@ -571,7 +571,7 @@ drs_shutdown(struct drv_sif *drv, int arg1, int arg2)
 	}
 
 	sceDeci2IfEventHandler(IFM_DOWN, sifdrv.iface, 0, 0, 0);
-	while (drv->flag & 0x101) {
+	while (drv->flag & (0x100 | 0x1)) {
 		sceDeci2ExPoll();
 	}
 

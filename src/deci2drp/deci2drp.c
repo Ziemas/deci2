@@ -57,19 +57,21 @@ struct drv_pif {
 	struct deci2_iface *iface;
 	int debug;
 	int flag;
+
 	char unkC;
+
 	u_char dma_chunk_size;
 	u_char dma_unk_cfg;
 	u_char dma_min_size;
 	short fifo_size;
 	int irq_num;
-	int (*unk18)();
+	int (*if_poll)();
 
 	sceDeci2Hdr hdr;
 
-	int unk24;
-	int unk28;
-	int unk2C;
+	int rcv_progress;
+	int rcv_len;
+	int send_len;
 };
 
 struct drv_pif pifdrv;
@@ -198,12 +200,12 @@ start()
 	sceDeci2DbgPrintStatus(func_00000410, &pifdrv);
 	if (prid < 16 || (read32(IRQ_CTRL) & 8) != 0) {
 		pifdrv.irq_num = 10;
-		pifdrv.unk18 = func_0000183C;
+		pifdrv.if_poll = func_0000183C;
 
 		pifdrv.iface = sceDeci2IfCreate(DECI2_NODE_HOST, &pifdrv, func_000004C4, func_0000183C);
 	} else {
 		pifdrv.irq_num = 23;
-		pifdrv.unk18 = func_00001820;
+		pifdrv.if_poll = func_00001820;
 		pifdrv.unkC = 1;
 
 		if ((*((u_char *)0xBF803100) & 8) == 0) {
@@ -361,7 +363,7 @@ func_00000608(struct drv_pif *drv)
 		}
 
 		drp_fifo_read(drv, (int *)&drv->hdr, 2, 1);
-		drv->unk24 = 0;
+		drv->rcv_progress = 0;
 
 		if (drv->hdr.len < 8) {
 			drv->flag &= ~0x2000;
@@ -388,14 +390,14 @@ func_00000708(struct drv_pif *drv)
 			drv->flag &= ~0x40;
 
 			cont = 1;
-			sceDeci2IfEventHandler(IFM_OUTDONE, drv->iface, drv->unk2C, 0, 0);
+			sceDeci2IfEventHandler(IFM_OUTDONE, drv->iface, drv->send_len, 0, 0);
 			if (drv->flag & 1) {
 				func_00000568(drv, 512);
 			}
 		}
 
 		if ((drv->flag & 0x10) == 0) {
-			if ((drv->flag & 0x21) == 0x21) {
+			if ((drv->flag & (0x20 | 1)) == (0x20 | 1)) {
 				if (drv->debug & 0x200) {
 					sceDeci2ExPanic("pif report_events IFM_OUT\n");
 				}
@@ -411,7 +413,7 @@ func_00000708(struct drv_pif *drv)
 			drv->flag &= ~0x4000;
 
 			cont = 1;
-			sceDeci2IfEventHandler(IFM_INDONE, drv->iface, drv->unk28, 0, 0);
+			sceDeci2IfEventHandler(IFM_INDONE, drv->iface, drv->rcv_len, 0, 0);
 			func_00000E38();
 		}
 
@@ -453,13 +455,13 @@ drp_rcv_read(struct drv_pif *drv, int a2, int a3)
 	int unk, unk2;
 
 	if (pif->rx_count) {
-		unk = drv->hdr.len - drv->unk24;
+		unk = drv->hdr.len - drv->rcv_progress;
 		if (drv->debug & 0x200) {
 			sceDeci2ExPanic("\tpif RxCounter is non zero full size read %d byte\n", unk);
 		}
 	} else {
 		unk = func_00000F44(drv);
-		unk2 = drv->hdr.len - drv->unk24;
+		unk2 = drv->hdr.len - drv->rcv_progress;
 
 		unk = min(unk, unk2);
 		if (drv->debug & 0x200) {
@@ -471,8 +473,8 @@ drp_rcv_read(struct drv_pif *drv, int a2, int a3)
 	unk = a3;
 
 	if (a3 > 0) {
-		drv->unk28 = a3;
-		if (drv->unk24 == 0) {
+		drv->rcv_len = a3;
+		if (drv->rcv_progress == 0) {
 			unk = a3 - 8;
 			memcpy((void *)a2, &drv->hdr.len, 8);
 			a2 += 8;
@@ -482,12 +484,12 @@ drp_rcv_read(struct drv_pif *drv, int a2, int a3)
 			drp_fifo_read(drv, (int *)a2, ((u_int)unk + 3) >> 2, 0);
 		}
 
-		drv->unk24 += a3;
+		drv->rcv_progress += a3;
 		drv->flag |= 0x4000;
 	}
 
 	if (drv->debug & 0x200) {
-		sceDeci2ExPanic("\tpif read %d byte, %d/%d in packet\n", a3, drv->unk24, drv->hdr.len);
+		sceDeci2ExPanic("\tpif read %d byte, %d/%d in packet\n", a3, drv->rcv_progress, drv->hdr.len);
 	}
 
 	return a3;
@@ -503,7 +505,7 @@ drp_rcv_end(struct drv_pif *drv, int a2, int a3)
 		sceDeci2ExPanic("\tpif RxCounter Dec\n");
 	}
 
-	drv->flag &= ~0x2100;
+	drv->flag &= ~(0x2000 | 0x100);
 	drv->hdr.len = 0;
 
 	if ((drv->flag & 0x1000) == 0) {
@@ -536,7 +538,7 @@ drp_send_write(struct drv_pif *drv, int a2, int a3)
 	a3 = min(unk, a3);
 
 	if (a3 > 0) {
-		drv->unk2C = a3;
+		drv->send_len = a3;
 		drp_fifo_write(drv, (u_int *)a2, ((u_int)a3 + 3) >> 2);
 		drv->flag |= 0x40;
 	}
@@ -554,7 +556,7 @@ drp_send_end(struct drv_pif *drv, int a2, int a3)
 		sceDeci2ExPanic("\tpif TxCounter inc\n");
 	}
 
-	drv->flag &= ~0x21;
+	drv->flag &= ~(0x20 | 0x1);
 	func_00000EA0();
 	return 0;
 }
@@ -562,7 +564,7 @@ drp_send_end(struct drv_pif *drv, int a2, int a3)
 int
 drp_poll(struct drv_pif *drv, int a2, int a3)
 {
-	if (drv->unk18()) {
+	if (drv->if_poll()) {
 		write32(I_STAT, ~(1 << drv->irq_num));
 		func_00000568(drv, 512);
 		func_00000608(drv);
