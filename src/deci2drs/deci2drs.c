@@ -113,9 +113,9 @@ start(int a0)
 	memset(&sifdrv, 0, sizeof(sifdrv));
 	sifdrv.flag |= 0x100000;
 	sifdrv.iface = sceDeci2IfCreate(DECI2_NODE_EE, &sifdrv, func_000000DC, func_00000F50);
-	DisableDispatchIntr(1);
-	DisableDispatchIntr(34);
-	EnableIntr(1);
+	DisableDispatchIntr(INUM_GM);
+	DisableDispatchIntr(INUM_DMA_2);
+	EnableIntr(INUM_GM);
 	return RESIDENT_END;
 }
 
@@ -208,9 +208,10 @@ func_000002B4(struct drv_sif *drv)
 		drv->flag |= 2;
 		sceSifSetMSflg(0x40000000);
 		if ((drv->debug & 0x800)) {
-			sceDeci2ExPanic("\t\tsif2 send dma start addr=%x, size=%x\n", drv->send_buf, drv->send_len);
+			sceDeci2ExPanic("\t\tsif2 send dma start addr=%x, size=%x\n", drv->send_buf,
+			  drv->send_len);
 		}
-		EnableIntr(34);
+		EnableIntr(INUM_DMA_2);
 		sceSifDma2Transfer(drv->send_buf, drv->send_len, 1);
 	}
 }
@@ -296,8 +297,8 @@ func_00000518(struct drv_sif *drv)
 			if (drv->flag & 0x2000) {
 				again = 1;
 				drv->flag &= ~0x2000;
-				sceDeci2IfEventHandler(IFM_IN, drv->iface, drv->in_len - drv->rcv_progress, drv->in_proto,
-				  drv->in_node);
+				sceDeci2IfEventHandler(IFM_IN, drv->iface, drv->in_len - drv->rcv_progress,
+				  drv->in_proto, drv->in_node);
 			}
 		}
 	} while (again);
@@ -341,7 +342,7 @@ drs_rcv_read(struct drv_sif *drv, int arg1, int arg2)
 
 	drv->rcv_len = size;
 	drv->rcv_buf = ptr;
-	EnableIntr(34);
+	EnableIntr(INUM_DMA_2);
 	sceSifDma2Transfer(ptr, size, 16);
 
 	return size;
@@ -424,12 +425,12 @@ int
 drs_poll_2(struct drv_sif *drv, int arg1, int arg2)
 {
 	if (func_00000F50(drv) != 0) {
-		if ((*D_ICR & 0x4000000) != 0 && (*I_STAT & 0x8) != 0) {
+		if ((*D_ICR & 0x4000000) != 0 && (*I_STAT & (1 << INUM_DMA)) != 0) {
 			while (*D_DMACEN != 0) {
 				*D_DMACEN = 0;
 			}
 
-			*I_STAT = ~0x8;
+			*I_STAT = ~(1 << INUM_DMA);
 			*D_ICR &= ~0xfb840000;
 
 			while ((*D_ICR & 0x800000) != 0)
@@ -454,8 +455,8 @@ drs_poll_2(struct drv_sif *drv, int arg1, int arg2)
 
 		func_00000518(drv);
 
-		if ((*I_STAT & 0x2) != 0) {
-			*I_STAT = ~0x2;
+		if ((*I_STAT & (1 << INUM_GM)) != 0) {
+			*I_STAT = ~(1 << INUM_GM);
 			func_000002B4(drv);
 			func_00000184(drv);
 			func_00000384(drv);
@@ -479,9 +480,9 @@ drs_poll_1(struct drv_sif *drv, int arg1, int arg2)
 		drv->flag = (drv->flag & ~0x100000) | 0x200000;
 		sceSifSetSMflg(0x80000000);
 		sceSifIntrOther();
-	} else if (drv->flag & 0x200000 && *I_STAT & 2) {
+	} else if (drv->flag & 0x200000 && *I_STAT & (1 << INUM_GM)) {
 		msflg = sceSifGetMSflg();
-		*I_STAT = ~2;
+		*I_STAT = ~(1 << INUM_GM);
 		if (msflg & 0x40000000) {
 			sceSifSetMSflg(0x40000000);
 			drv->flag &= ~0x200000;
@@ -580,12 +581,12 @@ drs_shutdown(struct drv_sif *drv, int arg1, int arg2)
 	sceSifIntrOther();
 
 	while (1) {
-		if (!(*I_STAT & 2)) {
+		if (!(*I_STAT & (1 << INUM_GM))) {
 			continue;
 		}
 
 		msflg = sceSifGetMSflg();
-		*I_STAT = ~2;
+		*I_STAT = ~(1 << INUM_GM);
 
 		if (msflg & 0x40000000) {
 			sceSifSetMSflg(0x40000000);

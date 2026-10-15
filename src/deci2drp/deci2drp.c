@@ -199,12 +199,12 @@ start()
 
 	sceDeci2DbgPrintStatus(func_00000410, &pifdrv);
 	if (prid < 16 || (read32(IRQ_CTRL) & 8) != 0) {
-		pifdrv.irq_num = 10;
+		pifdrv.irq_num = INUM_PIO;
 		pifdrv.if_poll = func_0000183C;
 
 		pifdrv.iface = sceDeci2IfCreate(DECI2_NODE_HOST, &pifdrv, func_000004C4, func_0000183C);
 	} else {
-		pifdrv.irq_num = 23;
+		pifdrv.irq_num = INUM_EXTR;
 		pifdrv.if_poll = func_00001820;
 		pifdrv.unkC = 1;
 

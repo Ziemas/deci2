@@ -98,7 +98,7 @@ start()
 	bm[1] = 0;
 	RegisterBootMode(bm);
 
-	RegisterIntrHandler(0x3e, 1, func_0000121C, &d2m);
+	RegisterIntrHandler(INUM_SW1, 1, func_0000121C, &d2m);
 	func_00002A40();
 	func_00003760();
 	AddRebootNotifyHandler(func_000001F4, 2, 0);

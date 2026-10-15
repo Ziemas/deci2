@@ -161,7 +161,7 @@ func_00002C9C(struct dcmp_state *d)
 
 // dcmp readdone
 // TODO try to clean this up, the raw pointer casting is nasty
-// can we really not do casts to ad-hod structs?
+// can we really not do casts to ad-hoc structs?
 void
 func_00002D14(struct dcmp_state *d, int param)
 {
