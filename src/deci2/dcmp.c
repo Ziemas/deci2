@@ -12,7 +12,7 @@ struct dcmp_state {
 	/* 0x34 */ struct deci2_iface *unk34;
 	/* 0x38 */ int unk38;
 	/* 0x3C */ int unk3C;
-	/* 0x40 */ char unk40[48];
+	/* 0x40 */ u_char unk40[48];
 	/* 0x70 */ int unk70;
 	/* 0x74 */ int unk74;
 	/* 0x78 */ int unk78;
@@ -23,16 +23,17 @@ struct dcmp_state {
 
 struct dcmp_state dcmp;
 
-void func_00002C9C(struct dcmp_state *);
+void func_00002C9C(struct dcmp_state *, int);
 void func_00002D14(struct dcmp_state *, int);
-void func_0000338C(struct dcmp_state *);
-void func_000033E0(struct dcmp_state *);
+void func_0000338C(struct dcmp_state *, int);
+void func_000033E0(struct dcmp_state *, int);
 
 void func_00003170(struct dcmp_state *d);
 void func_000035D4(struct dcmp_state *d);
 int func_00003668(struct dcmp_state *dcmp);
 void func_00003564(struct dcmp_state *d, void *buf, int len);
 struct deci2_socket *func_0000352C(int protocol);
+void func_00003600(struct dcmp_state *d, void *buf, int len);
 
 extern struct deci2_manager d2m;
 
@@ -55,16 +56,16 @@ func_00002A68(int event, int param, void *opt)
 
 	switch (event) {
 	case DECI2_READ:
-		func_00002C9C(d);
+		func_00002C9C(d, param);
 		break;
 	case DECI2_READDONE:
 		func_00002D14(d, param);
 		break;
 	case DECI2_WRITE:
-		func_0000338C(d);
+		func_0000338C(d, param);
 		break;
 	case DECI2_WRITEDONE:
-		func_000033E0(d);
+		func_000033E0(d, param);
 		break;
 	case DECI2_CHSTATUS:
 	case DECI2_ERROR:
@@ -149,7 +150,7 @@ func_00002C08(int status, int protocol)
 
 // dcmp read
 void
-func_00002C9C(struct dcmp_state *d)
+func_00002C9C(struct dcmp_state *d, int param)
 {
 	if (!d->unk0) {
 		d->unk34 = d2m.sock[0].read_if;
@@ -336,17 +337,146 @@ func_00002D14(struct dcmp_state *d, int param)
 	}
 }
 
-INCLUDE_ASM("asm/deci2/nonmatchings/dcmp", func_00003170);
+void
+func_00003170(struct dcmp_state *d)
+{
+	int ret, tmp, i;
+
+retry:
+	if (!d->unk74 || d->unk38) {
+		return;
+	}
+
+	func_00003600(d, d->unk40, 3);
+
+	switch (d->unk40[8]) {
+	case 0:
+		tmp = d->unk40[10];
+		*(u_short *)&d->unk40[10] = 0;
+		*(u_int *)&d->unk40[12] = tmp;
+		d->unk74--;
+		break;
+	case 1:
+		func_00003600(d, &d->unk40[12], ((*(u_short *)&d->unk40[0] + 3u) >> 2) - 3);
+		d->unk74--;
+		break;
+	case 3:
+		func_00003600(d, &d->unk40[12], ((*(u_short *)&d->unk40[0] + 3u) >> 2) - 3);
+		d->unk74--;
+		break;
+	case 2:
+		tmp = *(u_short *)&d->unk40[10];
+		*(u_short *)&d->unk40[10] = 0;
+		*(u_int *)&d->unk40[12] = tmp;
+		d->unk74--;
+		d->unk70 = 0;
+
+		i = 0;
+		while (d->unk70 < 2) {
+			if (d2m.iface[d->unk70].handler) {
+				if (*(u_char *)&d->unk40[9] != 4) {
+					break;
+				}
+
+				if (d2m.iface[d->unk70].node != *(u_int *)&d->unk40[12]) {
+					break;
+				}
+
+				i++;
+			}
+
+			d->unk70++;
+		}
+
+		if (d->unk70 < 2) {
+			d->unk40[7] = d2m.iface[d->unk70].node;
+			break;
+		}
+
+		if (i == 0) {
+			sceDeci2ExPanic("DCMP request_send: STATUS %d can not send\n", d->unk40[9]);
+			goto retry;
+		}
+
+		goto retry;
+	default:
+		sceDeci2ExPanic("DCMP request_send: unknown type 0x%x\n", d->unk40[8]);
+		return;
+	}
+
+	d->unk3C = 0;
+	d->unk38 = 1;
+
+	ret = sceDeci2ExReqSend(0, d->unk40[7]);
+	if (ret >= 0) {
+		return;
+	}
+
+	if (ret != DECI2_ERR_NOROUTE) {
+		sceDeci2ExPanic("DCMP request_send: ReqSend error %d\n", ret);
+	}
+
+	d->unk38 = 0;
+	goto retry;
+}
 
 // dcmp write
 void
-func_0000338C(struct dcmp_state *d)
+func_0000338C(struct dcmp_state *d, int param)
 {
 	d->unk3C += sceDeci2ExSend(0, &d->unk40[d->unk3C], ((sceDeci2Hdr *)d->unk40)->len - d->unk3C);
 }
 
 // dcmp writedone
-INCLUDE_ASM("asm/deci2/nonmatchings/dcmp", func_000033E0);
+void
+func_000033E0(struct dcmp_state *d, int param)
+{
+	int ret;
+
+	if (*(u_char *)&d->unk40[8] == 2) {
+		do {
+			d->unk70++;
+
+			while (d->unk70 < 2) {
+				if (d2m.iface[d->unk70].handler) {
+					if (*(u_char *)&d->unk40[9] != 4) {
+						break;
+					}
+
+					if (d2m.iface[d->unk70].node != *(u_int *)&d->unk40[12]) {
+						break;
+					}
+				}
+
+				d->unk70++;
+			}
+
+			if (d->unk70 >= 2) {
+				break;
+			}
+
+			d->unk40[7] = d2m.iface[d->unk70].node;
+			d->unk3C = 0;
+
+			ret = sceDeci2ExReqSend(0, d->unk40[7]);
+			if (ret > 0) {
+				return;
+			}
+
+			if (ret != DECI2_ERR_NOROUTE) {
+				sceDeci2ExPanic("DCMP WriteDoneHandler: ReqSend error %d\n", ret);
+			}
+
+		} while (ret == DECI2_ERR_NOROUTE);
+	}
+
+	if (*(u_short *)&d->unk40[8] == 0x300 && !*(u_int *)&d->unk40[12]) {
+		d2m.host_route = NULL;
+	}
+
+	d->unk38 = 0;
+	func_00003170(d);
+}
 
 struct deci2_socket *
 func_0000352C(int protocol)
