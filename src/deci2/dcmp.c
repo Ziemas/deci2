@@ -7,13 +7,14 @@
 #include <deci2.h>
 
 struct dcmp_state {
-	/* 0x00 */ int unk0;
-	/* 0x04 */ u_char unk4[48];
-	/* 0x34 */ struct deci2_iface *unk34;
+	/* 0x00 */ int rxpos;
+	/* 0x04 */ u_char rx[48];
+	/* 0x34 */ struct deci2_iface *src_if;
 	/* 0x38 */ int unk38;
-	/* 0x3C */ int unk3C;
-	/* 0x40 */ u_char unk40[48];
+	/* 0x3C */ int txpos;
+	/* 0x40 */ u_char tx[48];
 	/* 0x70 */ int unk70;
+
 	/* 0x74 */ int unk74;
 	/* 0x78 */ int unk78;
 	/* 0x7C */ int unk7C;
@@ -41,7 +42,7 @@ extern struct deci2_manager d2m;
 void
 func_00002A40()
 {
-	dcmp.unk0 = 0;
+	dcmp.rxpos = 0;
 	dcmp.unk78 = 0;
 	dcmp.unk7C = 0;
 	dcmp.unk80 = 0;
@@ -152,11 +153,11 @@ func_00002C08(int status, int protocol)
 void
 func_00002C9C(struct dcmp_state *d, int param)
 {
-	if (!d->unk0) {
-		d->unk34 = d2m.sock[0].read_if;
-		d->unk0 += sceDeci2ExRecv(0, d->unk4, 0x30);
+	if (!d->rxpos) {
+		d->src_if = d2m.sock[0].read_if;
+		d->rxpos += sceDeci2ExRecv(0, d->rx, 0x30);
 	} else {
-		d->unk0 += sceDeci2ExRecv(0, &d->unk4[d->unk0], 0x30 - d->unk0);
+		d->rxpos += sceDeci2ExRecv(0, &d->rx[d->rxpos], 0x30 - d->rxpos);
 	}
 }
 
@@ -179,50 +180,50 @@ func_00002D14(struct dcmp_state *d, int param)
 		sceDcmpHdr dcmp;
 	} response;
 
-	d->unk0 = 0;
+	d->rxpos = 0;
 
-	switch ((u_char)d->unk4[8]) {
+	switch ((u_char)d->rx[8]) {
 	case DCMP_TYPE_CONNECT:
 
-		switch (d->unk4[9]) {
+		switch (d->rx[9]) {
 		case DCMP_CODE_CONNECT:
 			if (!d2m.host_route) {
 				u_int tmp;
-				d2m.host_route = d->unk34;
-				if (*(u_short *)&d->unk4[0] == 32) {
+				d2m.host_route = d->src_if;
+				if (*(u_short *)&d->rx[0] == 32) {
 					bm.hdr = BOOTMODE(2, 2, 0);
-					bm.param[0] = *(u_int *)&d->unk4[16];
-					bm.param[1] = *(u_int *)&d->unk4[20];
+					bm.param[0] = *(u_int *)&d->rx[16];
+					bm.param[1] = *(u_int *)&d->rx[20];
 					RegisterBootMode(&bm);
 
 					bm.hdr = BOOTMODE(3, 2, 0);
-					bm.param[0] = *(u_int *)&d->unk4[24];
-					bm.param[1] = *(u_int *)&d->unk4[28];
+					bm.param[0] = *(u_int *)&d->rx[24];
+					bm.param[1] = *(u_int *)&d->rx[28];
 					RegisterBootMode(&bm);
 				}
 
-				response.d2.src = d->unk4[7];
-				response.d2.dest = d->unk4[6];
+				response.d2.src = d->rx[7];
+				response.d2.dest = d->rx[6];
 				response.dcmp.unused = 0;
-				tmp = d->unk4[6];
-				d->unk4[6] = 'I';
-				d->unk4[7] = 'I';
-				*(u_short *)&d->unk4[0] = 14;
-				*(u_short *)&d->unk4[4] = 1;
-				*(u_char *)&d->unk4[8] = 2;
-				*(u_char *)&d->unk4[9] = 0;
-				*(u_int *)&d->unk4[12] = tmp;
+				tmp = d->rx[6];
+				d->rx[6] = 'I';
+				d->rx[7] = 'I';
+				*(u_short *)&d->rx[0] = 14;
+				*(u_short *)&d->rx[4] = 1;
+				*(u_char *)&d->rx[8] = 2;
+				*(u_char *)&d->rx[9] = 0;
+				*(u_int *)&d->rx[12] = tmp;
 
 				for (i = 3, sock = &d2m.sock[3]; i < MAX_SOCK; i++, sock++) {
 					if (sock->handler) {
-						sock->handler(DECI2_CHSTATUS, (int)d->unk4, sock->opt);
+						sock->handler(DECI2_CHSTATUS, (int)d->rx, sock->opt);
 					}
 				}
 
 				sceDeci2ExSetEventFlag(0, GetSystemStatusFlag(), 0x40);
 			} else {
-				response.d2.src = d->unk4[7];
-				response.d2.dest = d->unk4[6];
+				response.d2.src = d->rx[7];
+				response.d2.dest = d->rx[6];
 				response.dcmp.unused = 2;
 			}
 
@@ -245,8 +246,8 @@ func_00002D14(struct dcmp_state *d, int param)
 
 			response.d2.len = 16;
 			response.d2.rsvd = 0;
-			response.d2.src = d->unk4[7];
-			response.d2.dest = d->unk4[6];
+			response.d2.src = d->rx[7];
+			response.d2.dest = d->rx[6];
 			response.d2.proto = 1;
 			response.dcmp.type = 0;
 			response.dcmp.code = 3;
@@ -256,19 +257,19 @@ func_00002D14(struct dcmp_state *d, int param)
 
 			break;
 		default:
-			sceDeci2ExPanic("DCMPT_CONNECT: unknown code 0x%x", d->unk4[9]);
+			sceDeci2ExPanic("DCMPT_CONNECT: unknown code 0x%x", d->rx[9]);
 			break;
 		}
 		break;
 
 	case DCMP_TYPE_ECHO:
-		switch (d->unk4[9]) {
+		switch (d->rx[9]) {
 		case 0:
-			if ((*(u_short *)&d->unk4[0] + 3u) >> 2 <= func_00003668(d)) {
-				response.d2.len = *(u_short *)&d->unk4[0];
+			if ((*(u_short *)&d->rx[0] + 3u) >> 2 <= func_00003668(d)) {
+				response.d2.len = *(u_short *)&d->rx[0];
 				response.d2.rsvd = 0;
-				response.d2.src = d->unk4[7];
-				response.d2.dest = d->unk4[6];
+				response.d2.src = d->rx[7];
+				response.d2.dest = d->rx[6];
 				response.d2.proto = 1;
 				response.dcmp.type = 1;
 				response.dcmp.code = 1;
@@ -276,7 +277,7 @@ func_00002D14(struct dcmp_state *d, int param)
 
 				func_00003564(d, &response, 3);
 
-				func_00003564(d, &d->unk4[12], ((*(u_short *)&d->unk4[0] + 3u) >> 2) - 3);
+				func_00003564(d, &d->rx[12], ((*(u_short *)&d->rx[0] + 3u) >> 2) - 3);
 				func_000035D4(d);
 
 			} else {
@@ -284,24 +285,24 @@ func_00002D14(struct dcmp_state *d, int param)
 			}
 			break;
 		default:
-			sceDeci2ExPanic("DCMPT_ECHO: unknown code 0x%x\n", d->unk4[9]);
+			sceDeci2ExPanic("DCMPT_ECHO: unknown code 0x%x\n", d->rx[9]);
 			break;
 		}
 		break;
 
 	case DCMP_TYPE_STATUS:
-		switch (d->unk4[9]) {
+		switch (d->rx[9]) {
 		case 1:
-			sock = func_0000352C(*(u_short *)&d->unk4[12]);
+			sock = func_0000352C(*(u_short *)&d->rx[12]);
 			if (sock && sock->handler) {
-				sock->handler(DECI2_CHSTATUS, (int)d->unk4, sock->opt);
+				sock->handler(DECI2_CHSTATUS, (int)d->rx, sock->opt);
 			}
 			break;
 		case 2:
 		case 3:
 			for (i = 3, sock = &d2m.sock[3]; i < MAX_SOCK; i++, sock++) {
 				if (sock->handler) {
-					sock->handler(DECI2_CHSTATUS, (int)d->unk4, sock->opt);
+					sock->handler(DECI2_CHSTATUS, (int)d->rx, sock->opt);
 				}
 			}
 			break;
@@ -309,30 +310,30 @@ func_00002D14(struct dcmp_state *d, int param)
 		case 4:
 			break;
 		default:
-			sceDeci2ExPanic("DCMPT_STATUS: unknown code 0x%x\n", d->unk4[9]);
+			sceDeci2ExPanic("DCMPT_STATUS: unknown code 0x%x\n", d->rx[9]);
 			break;
 		}
 		break;
 
 	case DCMP_TYPE_ERROR:
-		if (d->unk4[9] >= 5) {
-			sceDeci2ExPanic("DCMPT_ERROR: unknown code 0x%x\n", d->unk4[9]);
+		if (d->rx[9] >= 5) {
+			sceDeci2ExPanic("DCMPT_ERROR: unknown code 0x%x\n", d->rx[9]);
 			return;
 		}
 
-		sock = func_0000352C(*(u_short *)&d->unk4[16]);
+		sock = func_0000352C(*(u_short *)&d->rx[16]);
 		if (sock) {
 			if (sock->handler) {
-				sock->handler(DECI2_ERROR, (int)d->unk4, sock->opt);
+				sock->handler(DECI2_ERROR, (int)d->rx, sock->opt);
 			}
 		} else {
-			sceDeci2ExPanic("DCMPT_ERROR: unknown proto 0x%x\n", *(u_short *)&d->unk4[16]);
+			sceDeci2ExPanic("DCMPT_ERROR: unknown proto 0x%x\n", *(u_short *)&d->rx[16]);
 		}
 
 		break;
 
 	default:
-		sceDeci2ExPanic("DCMPT_XXXX: unknown type 0x%x\n", d->unk4[8]);
+		sceDeci2ExPanic("DCMPT_XXXX: unknown type 0x%x\n", d->rx[8]);
 		break;
 	}
 }
@@ -347,38 +348,38 @@ retry:
 		return;
 	}
 
-	func_00003600(d, d->unk40, 3);
+	func_00003600(d, d->tx, 3);
 
-	switch (d->unk40[8]) {
+	switch (d->tx[8]) {
 	case 0:
-		tmp = d->unk40[10];
-		*(u_short *)&d->unk40[10] = 0;
-		*(u_int *)&d->unk40[12] = tmp;
+		tmp = d->tx[10];
+		*(u_short *)&d->tx[10] = 0;
+		*(u_int *)&d->tx[12] = tmp;
 		d->unk74--;
 		break;
 	case 1:
-		func_00003600(d, &d->unk40[12], ((*(u_short *)&d->unk40[0] + 3u) >> 2) - 3);
+		func_00003600(d, &d->tx[12], ((*(u_short *)&d->tx[0] + 3u) >> 2) - 3);
 		d->unk74--;
 		break;
 	case 3:
-		func_00003600(d, &d->unk40[12], ((*(u_short *)&d->unk40[0] + 3u) >> 2) - 3);
+		func_00003600(d, &d->tx[12], ((*(u_short *)&d->tx[0] + 3u) >> 2) - 3);
 		d->unk74--;
 		break;
 	case 2:
-		tmp = *(u_short *)&d->unk40[10];
-		*(u_short *)&d->unk40[10] = 0;
-		*(u_int *)&d->unk40[12] = tmp;
+		tmp = *(u_short *)&d->tx[10];
+		*(u_short *)&d->tx[10] = 0;
+		*(u_int *)&d->tx[12] = tmp;
 		d->unk74--;
 		d->unk70 = 0;
 
 		i = 0;
 		while (d->unk70 < 2) {
 			if (d2m.iface[d->unk70].handler) {
-				if (*(u_char *)&d->unk40[9] != 4) {
+				if (*(u_char *)&d->tx[9] != 4) {
 					break;
 				}
 
-				if (d2m.iface[d->unk70].node != *(u_int *)&d->unk40[12]) {
+				if (d2m.iface[d->unk70].node != *(u_int *)&d->tx[12]) {
 					break;
 				}
 
@@ -389,25 +390,25 @@ retry:
 		}
 
 		if (d->unk70 < 2) {
-			d->unk40[7] = d2m.iface[d->unk70].node;
+			d->tx[7] = d2m.iface[d->unk70].node;
 			break;
 		}
 
 		if (i == 0) {
-			sceDeci2ExPanic("DCMP request_send: STATUS %d can not send\n", d->unk40[9]);
+			sceDeci2ExPanic("DCMP request_send: STATUS %d can not send\n", d->tx[9]);
 			goto retry;
 		}
 
 		goto retry;
 	default:
-		sceDeci2ExPanic("DCMP request_send: unknown type 0x%x\n", d->unk40[8]);
+		sceDeci2ExPanic("DCMP request_send: unknown type 0x%x\n", d->tx[8]);
 		return;
 	}
 
-	d->unk3C = 0;
+	d->txpos = 0;
 	d->unk38 = 1;
 
-	ret = sceDeci2ExReqSend(0, d->unk40[7]);
+	ret = sceDeci2ExReqSend(0, d->tx[7]);
 	if (ret >= 0) {
 		return;
 	}
@@ -424,7 +425,7 @@ retry:
 void
 func_0000338C(struct dcmp_state *d, int param)
 {
-	d->unk3C += sceDeci2ExSend(0, &d->unk40[d->unk3C], ((sceDeci2Hdr *)d->unk40)->len - d->unk3C);
+	d->txpos += sceDeci2ExSend(0, &d->tx[d->txpos], ((sceDeci2Hdr *)d->tx)->len - d->txpos);
 }
 
 // dcmp writedone
@@ -433,17 +434,17 @@ func_000033E0(struct dcmp_state *d, int param)
 {
 	int ret;
 
-	if (*(u_char *)&d->unk40[8] == 2) {
+	if (*(u_char *)&d->tx[8] == 2) {
 		do {
 			d->unk70++;
 
 			while (d->unk70 < 2) {
 				if (d2m.iface[d->unk70].handler) {
-					if (*(u_char *)&d->unk40[9] != 4) {
+					if (*(u_char *)&d->tx[9] != 4) {
 						break;
 					}
 
-					if (d2m.iface[d->unk70].node != *(u_int *)&d->unk40[12]) {
+					if (d2m.iface[d->unk70].node != *(u_int *)&d->tx[12]) {
 						break;
 					}
 				}
@@ -455,10 +456,10 @@ func_000033E0(struct dcmp_state *d, int param)
 				break;
 			}
 
-			d->unk40[7] = d2m.iface[d->unk70].node;
-			d->unk3C = 0;
+			d->tx[7] = d2m.iface[d->unk70].node;
+			d->txpos = 0;
 
-			ret = sceDeci2ExReqSend(0, d->unk40[7]);
+			ret = sceDeci2ExReqSend(0, d->tx[7]);
 			if (ret > 0) {
 				return;
 			}
@@ -470,7 +471,7 @@ func_000033E0(struct dcmp_state *d, int param)
 		} while (ret == DECI2_ERR_NOROUTE);
 	}
 
-	if (*(u_short *)&d->unk40[8] == 0x300 && !*(u_int *)&d->unk40[12]) {
+	if (*(u_short *)&d->tx[8] == 0x300 && !*(u_int *)&d->tx[12]) {
 		d2m.host_route = NULL;
 	}
 
@@ -493,6 +494,7 @@ func_0000352C(int protocol)
 	return NULL;
 }
 
+// fifo_push
 void
 func_00003564(struct dcmp_state *d, void *buf, int len)
 {
@@ -512,6 +514,7 @@ func_00003564(struct dcmp_state *d, void *buf, int len)
 	}
 }
 
+// fifo_send
 void
 func_000035D4(struct dcmp_state *d)
 {
@@ -519,6 +522,7 @@ func_000035D4(struct dcmp_state *d)
 	func_00003170(d);
 }
 
+// fifo_pop
 void
 func_00003600(struct dcmp_state *d, void *buf, int len)
 {
