@@ -41,8 +41,8 @@ void func_00002A68();
 int func_0000121C(void *);
 void func_00002A40();
 int func_00003760(); // should be in sdb header
-int func_000001F4(void *opt);
-int func_00000240(void *opt);
+int func_000001F4(int *, int);
+int func_00000240(int *, int);
 void error_handler(int, int, void *);
 void relay_rcv_packet(struct deci2_iface *src, struct deci2_iface *dst, int len, int protocol,
   int node);
@@ -110,7 +110,7 @@ start()
 }
 
 int
-func_000001F4(void *opt)
+func_000001F4(int *status, int unk)
 {
 	static char header[] = "\nIOP DECI2 manager Version 0.9.4"
 						   "\n    Copyright 1999,2000,2003 (C) Sony Computer Entertainment Inc. \n";
@@ -124,13 +124,10 @@ func_000001F4(void *opt)
 }
 
 int
-func_00000240(void *opt)
+func_00000240(int *status, int unk)
 {
-
-	struct deci2_manager *d2 = opt;
-
 	CpuEnableIntr();
-	if (!d2->lock_holder) {
+	if (*status == 0) {
 		ChangeThreadPriority(0, 126);
 		while (1) {
 			sceDeci2Poll();
