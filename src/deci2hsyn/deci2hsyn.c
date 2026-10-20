@@ -9,19 +9,19 @@ ModuleInfo Module = { "Deci2_host_sync", 0x101 };
 int
 start()
 {
-	int *bootmode;
+	BootParam *bp;
 
 	if (!sceDeci2GetStatus()->host_if) {
 		return 1;
 	}
 
-	bootmode = QueryBootMode(1);
-	if (!bootmode) {
+	bp = QueryBootMode(KEY_DECItype);
+	if (!bp) {
 		return 1;
 	}
 
-	if (*(unsigned short *)bootmode == 2) {
-		while (!QueryBootMode(3))
+	if (bp->value == 2) {
+		while (!QueryBootMode(KEY_IOPbootparam))
 			;
 	}
 

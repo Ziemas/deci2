@@ -60,7 +60,7 @@ int
 start()
 {
 	int oldstat, i;
-	int *bootmode;
+	BootParam *bp;
 	int bm[2];
 
 	memset(&d2m, 0, sizeof(d2m));
@@ -68,8 +68,8 @@ start()
 	memset(&unk66F0, 0, sizeof(unk66F0));
 	d2m.unk600 = unk66F0;
 
-	bootmode = QueryBootMode(1);
-	if (bootmode) {
+	bp = QueryBootMode(KEY_DECItype);
+	if (bp) {
 		return 1;
 	}
 
@@ -94,7 +94,7 @@ start()
 		relay[i].sock = i + 1;
 	}
 
-	bm[0] = BOOTMODE(1, 0, 2);
+	bm[0] = BOOTMODE(KEY_DECItype, 2, 0);
 	bm[1] = 0;
 	RegisterBootMode(bm);
 
@@ -182,7 +182,7 @@ sceDeci2SetDebugFlags(u_int flags)
 int
 sceDeci2ExOpen(u_short proto, void *opt, void (*handler)(int event, int param, void *opt))
 {
-	int *bootmode;
+	BootParam *bp;
 	int i;
 
 	if (proto == 0 || proto >= 0xf000) {
@@ -195,7 +195,7 @@ sceDeci2ExOpen(u_short proto, void *opt, void (*handler)(int event, int param, v
 		}
 	}
 
-	bootmode = QueryBootMode(4);
+	bp = QueryBootMode(4);
 
 	for (i = 0; i < MAX_SOCK; i++) {
 		if (d2m.sock[i].handler == NULL) {
@@ -205,7 +205,7 @@ sceDeci2ExOpen(u_short proto, void *opt, void (*handler)(int event, int param, v
 			d2m.sock[i].handler = handler;
 			d2m.sock[i].opt = opt;
 
-			if (bootmode && *(u_short *)bootmode == 0) {
+			if (bp && bp->value == 0) {
 				if (proto <= DECI2_PROTO_I0TTYP || proto >= DECI2_PROTO_I0TTYP + 9 ||
 				  d2m.debug_flag) {
 					sceDeci2ExPanic(" socket %2d proto=0x%x handler=0x%x opt=0x%x\n", i, proto,
@@ -544,14 +544,15 @@ func_00000DE8(void *opt, const char *fmt, va_list ap)
 void
 sceDeci2DbgPrintStatus(void (*fn)(void *, int), void *opt)
 {
-	int *bootmode, i;
+	BootParam *bp;
+	int i;
 
 	d2m.dbg_print_fn = fn;
 	d2m.dbg_print_opt = opt;
 	KprintfSet(func_00000DE8, &d2m);
 
-	bootmode = QueryBootMode(4);
-	if (!bootmode || *(u_short *)bootmode) {
+	bp = QueryBootMode(4);
+	if (!bp || bp->value) {
 		return;
 	}
 
@@ -717,7 +718,7 @@ struct deci2_iface *
 sceDeci2ExIfCreate(struct if_param *ifp)
 {
 	struct deci2_iface *iface;
-	int *bm;
+	BootParam *bp;
 	int i;
 
 	for (i = 0; i < MAX_INTERFACE; i++) {
@@ -732,8 +733,8 @@ sceDeci2ExIfCreate(struct if_param *ifp)
 			d2m.iface[i].opt = ifp->opt;
 			d2m.unk600[i] = ifp->interrupt;
 
-			bm = QueryBootMode(4);
-			if (bm && !*(u_short *)bm) {
+			bp = QueryBootMode(4);
+			if (bp && bp->value == 0) {
 				sceDeci2ExPanic(" interface %d dest=0x%x handler=0x%x opt=0x%x interface=0x%x\n\r",
 				  i, ifp->node, ifp->handler, ifp->opt, &d2m.iface[i]);
 			}
@@ -763,7 +764,7 @@ sceDeci2IfCreate(short node, void *opt, int (*handler)(), int (*interrupt)())
 void
 sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protocol, int node)
 {
-	int *bm;
+	BootParam *bp;
 
 	switch (event) {
 	case IFM_IN:
@@ -875,8 +876,8 @@ sceDeci2IfEventHandler(int event, struct deci2_iface *iface, int len, int protoc
 		break;
 	case IFM_UP:
 		iface->flags |= 1;
-		bm = QueryBootMode(4);
-		if (bm && !*(u_short *)bm) {
+		bp = QueryBootMode(4);
+		if (bp && bp->value == 0) {
 			sceDeci2ExPanic(" interface %d active\n\r", iface - d2m.iface);
 		}
 		func_00002C08(4, iface->node);

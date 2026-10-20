@@ -168,12 +168,8 @@ void
 func_00002D14(struct dcmp_state *d, int param)
 {
 	struct deci2_socket *sock;
+	u_int boot_param[3];
 	int i;
-
-	struct {
-		u_int hdr;
-		u_int param[2];
-	} bm;
 
 	struct {
 		sceDeci2Hdr d2;
@@ -191,15 +187,15 @@ func_00002D14(struct dcmp_state *d, int param)
 				u_int tmp;
 				d2m.host_route = d->src_if;
 				if (*(u_short *)&d->rx[0] == 32) {
-					bm.hdr = BOOTMODE(2, 2, 0);
-					bm.param[0] = *(u_int *)&d->rx[16];
-					bm.param[1] = *(u_int *)&d->rx[20];
-					RegisterBootMode(&bm);
+					boot_param[0] = BOOTMODE(2, 0, 2);
+					boot_param[1] = *(u_int *)&d->rx[16];
+					boot_param[2] = *(u_int *)&d->rx[20];
+					RegisterBootMode(boot_param);
 
-					bm.hdr = BOOTMODE(3, 2, 0);
-					bm.param[0] = *(u_int *)&d->rx[24];
-					bm.param[1] = *(u_int *)&d->rx[28];
-					RegisterBootMode(&bm);
+					boot_param[0] = BOOTMODE(3, 0, 2);
+					boot_param[1] = *(u_int *)&d->rx[24];
+					boot_param[2] = *(u_int *)&d->rx[28];
+					RegisterBootMode(boot_param);
 				}
 
 				response.d2.src = d->rx[7];

@@ -35,10 +35,10 @@ static int kp_flush(struct kp_state *kp);
 int
 start()
 {
-	int *bootmode;
+	BootParam *bp;
 
-	bootmode = QueryBootMode(3);
-	if (bootmode && (bootmode[1] & 8) != 0) {
+	bp = QueryBootMode(KEY_IOPbootparam);
+	if (bp && (bp->eword[0] & 8) != 0) {
 		return 1;
 	}
 

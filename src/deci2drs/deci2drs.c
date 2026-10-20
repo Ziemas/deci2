@@ -91,7 +91,7 @@ const char *drs_if_func_name[] = {
 int
 start(int a0)
 {
-	int *bootmode;
+	BootParam *bp;
 	int prid;
 
 	asm volatile("mfc0 %0, $15" : "=r"(prid) :);
@@ -104,8 +104,8 @@ start(int a0)
 	}
 
 	if (!a0) {
-		bootmode = QueryBootMode(3);
-		if (bootmode && (bootmode[1] & 0x40)) {
+		bp = QueryBootMode(KEY_IOPbootparam);
+		if (bp && (bp->eword[0] & 0x40)) {
 			return NO_RESIDENT_END;
 		}
 	}
