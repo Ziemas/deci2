@@ -12,8 +12,8 @@
 #include <loadcore.h>
 #include <string.h>
 
-extern int D_A00003E0;
-extern int D_A00003E4;
+#define MS_SPEC ((u_int*)(0xA00003E0))
+#define SM_SPEC ((u_int*)(0xA00003E4))
 
 ModuleInfo Module = { "Deci2_SIF2_interface_driver", 0x103 };
 
@@ -141,7 +141,7 @@ func_00000184(struct drv_sif *drv)
 	}
 
 	if (!(drv->flag & (0x200 | 0x2)) && (msflag & 0x80000000)) {
-		spec = D_A00003E0;
+		spec = *MS_SPEC;
 		/*
 		 * First write of transfer?
 		 * int words : 8
@@ -156,7 +156,7 @@ func_00000184(struct drv_sif *drv)
 		 */
 
 		if ((drv->debug & 0x800)) {
-			sceDeci2ExPanic("\t\tsif2 read spec %x and DECI2_ACCEPT\n", D_A00003E0);
+			sceDeci2ExPanic("\t\tsif2 read spec %x and DECI2_ACCEPT\n", *MS_SPEC);
 		}
 
 		drv->in_proto = spec >> 16;
@@ -400,7 +400,7 @@ drs_send_write(struct drv_sif *drv, int arg1, int arg2)
 		sceDeci2ExPanic("\t\tsif2 write spec %x and DECI2_START\n", spec);
 	}
 
-	D_A00003E4 = spec;
+	*SM_SPEC = spec;
 	sceSifSetSMflg(0x80000000);
 	sceSifIntrOther();
 
@@ -476,7 +476,7 @@ drs_poll_1(struct drv_sif *drv, int arg1, int arg2)
 
 	if (drv->flag & 0x100000 && sceSifCheckInit()) {
 		sceSifDma2Init();
-		D_A00003E4 = 0x100;
+		*SM_SPEC = 0x100;
 		drv->flag = (drv->flag & ~0x100000) | 0x200000;
 		sceSifSetSMflg(0x80000000);
 		sceSifIntrOther();
@@ -576,7 +576,7 @@ drs_shutdown(struct drv_sif *drv, int arg1, int arg2)
 		sceDeci2ExPoll();
 	}
 
-	D_A00003E4 = 0x200;
+	*SM_SPEC = 0x200;
 	sceSifSetSMflg(0x80000000);
 	sceSifIntrOther();
 
